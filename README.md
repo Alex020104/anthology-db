@@ -45,3 +45,9 @@ py -3 .\tools\stage_release_assets.py `
   --manifest .\db_version.json `
   --out .\release\2026.05.24.1
 ```
+
+With GitHub CLI installed and authenticated, create/upload the release:
+
+```powershell
+.\tools\upload_release.ps1 -Version 2026.05.24.1
+```
