@@ -1,102 +1,105 @@
 # Anthology DB Update Channel
 
-This repository stores the Anthology DB update manifest. Large `.xdb` and `.db`
-files are uploaded as GitHub Release assets.
+Этот репозиторий является рабочим центром Anthology DB update channel.
 
-The launcher reads `db_version.json`, removes local extra DB archives in mirror
-mode, and downloads only files whose size or SHA-256 hash does not match.
+Он хранит `db_version.json`, release-helper scripts и правила публикации DB.
+Большие `.xdb` и `.db` файлы не хранятся в Git: они загружаются в GitHub Release
+как assets.
 
-## Manifest Shape
+## Как Это Работает Для Игрока
+
+Лаунчер читает:
+
+```text
+https://github.com/sysliveprime-ctrl/anthology-db/blob/main/db_version.json
+```
+
+Затем он:
+
+1. сравнивает локальные DB-файлы по размеру и SHA-256;
+2. скачивает только отсутствующие или изменённые файлы;
+3. удаляет лишние DB-архивы из `db/configs` и `db/mods`, если их нет в
+   манифесте;
+4. сохраняет локальное состояние в `webcache\db_update\db_state.json`.
+
+Git игрокам не нужен.
+
+## Манифест
+
+Пример `db_version.json`:
 
 ```json
 {
-  "version": "2026.05.24.1",
+  "version": "2026.05.25.3",
   "mode": "mirror",
-  "base_url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.05.24.1/",
+  "base_url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.05.25.3/",
   "files": [
     {
       "path": "db/configs/configs_anthology.xdb0",
       "asset_name": "db_configs_configs_anthology.xdb0",
-      "size": 12496896,
+      "size": 12496512,
       "sha256": "..."
     }
-  ]
+  ],
+  "notes": "Описание обновления"
 }
 ```
 
-## Workflow
+`mode = mirror` означает, что локальные DB-архивы, отсутствующие в манифесте,
+будут удалены.
 
-1. Pack DB archives yourself with the correct X-Ray packer.
-2. Put the finished files in the live game DB folders.
-3. Rebuild `db_version.json` from the live game DB folders.
-4. Commit and push the manifest from this repository.
-5. Upload release assets from the live game DB folders.
+## Источники DB
 
-DB asset sources:
+Манифест собирается не из репозитория, а из живой папки игры:
 
 ```text
 D:\Games\ANTHOLOGY\Anomaly-1.5.3-Anthology 2.1\db\configs
 D:\Games\ANTHOLOGY\Anomaly-1.5.3-Anthology 2.1\db\mods
 ```
 
-Example:
+## Релиз DB
 
 ```powershell
-py -3 .\skills\anthology-release-ops\scripts\anthology_release_ops.py workgit --version 2026.05.24.1 --notes "Updated DB archives"
+py -3 E:\dev\Anthology-Work-Git\skills\anthology-release-ops\scripts\anthology_release_ops.py workgit --version YYYY.MM.DD.N --notes "Описание обновления"
 ```
 
-The MO2 modpack source is:
+Скрипт:
+
+1. сканирует живые DB-папки;
+2. пересобирает `db_version.json`;
+3. коммитит и пушит `main`;
+4. создаёт или обновляет GitHub Release с тегом версии;
+5. загружает DB-файлы как release assets.
+
+## Связанные Репозитории
 
 ```text
-D:\Games\ANTHOLOGY\SYS_A.N.T.H.O.L.O.G.Y_mo2_CBT\mods
+launcher repo:  E:\dev\Anthology-Work-Git\projects\AnthologyLauncher
+modpack repo:   D:\Games\ANTHOLOGY\SYS_A.N.T.H.O.L.O.G.Y_mo2_CBT\mods
+engine repo:    E:\dev\xray-monolith
 ```
 
-The launcher repo lives inside this workspace as a separate Git checkout:
+Публичные репозитории:
+
+- `sysliveprime-ctrl/AnthologyLauncher`
+- `sysliveprime-ctrl/anthology-mo2-modpack`
+- `sysliveprime-ctrl/anthology-db`
+- `sysliveprime-ctrl/xray-monolith`
+
+## Release Helper
+
+Источник правил релиза находится здесь:
 
 ```text
-E:\dev\Anthology-Work-Git\projects\AnthologyLauncher
+skills\anthology-release-ops
 ```
 
-The Anthology source snapshot is a separate repo used only for source updates:
+Не поддерживать отдельную копию под `C:\Users\parti\.codex\skills`. Там может
+быть только discovery pointer.
 
-```text
-E:\dev\anomaly-codex-main\ai_workspace\Source_Anthology
-```
+## Правила
 
-It pushes to `sysliveprime-ctrl/anthology-source` and does not participate in
-launcher builds, launcher update checks, or DB release uploads.
-
-## Client Updates
-
-Players do not need Git. GitHub repositories are used only by the maintainer to
-publish update metadata and downloadable archives.
-
-The launcher update flow is:
-
-```text
-launcher_version.json -> latest release AnomalyLauncher.exe
-version.json          -> anthology-mo2-modpack main.zip
-db_version.json       -> anthology-db release assets
-```
-
-`anthology-source` is not part of the launcher update flow.
-
-## Codex Release Skill
-
-The Anthology release helper skill source of truth is stored in this repository
-at:
-
-```text
-skills/anthology-release-ops
-```
-
-Do not develop or maintain this skill under `C:\Users\parti\.codex\skills`.
-That folder may contain only a small discovery pointer for Codex. All scripts,
-release rules, docs, and fixes belong in `E:\dev\Anthology-Work-Git`.
-
-After changing this repo copy, refresh only the local discovery pointer if
-needed:
-
-```powershell
-Copy-Item .\skills\anthology-release-ops\SKILL.md "$env:USERPROFILE\.codex\skills\anthology-release-ops\SKILL.md" -Force
-```
+- Не хранить DB-архивы в Git.
+- Не заливать нулевые release assets: GitHub их отклоняет.
+- После релиза проверять GitHub contents API, а не только raw URL.
+- Тестовые файлы `anthology_release_*` не должны попадать в манифест.
