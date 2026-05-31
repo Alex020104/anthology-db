@@ -7,6 +7,7 @@ import argparse
 import base64
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -27,6 +28,16 @@ DB_SOURCE_DIRS = {
 DB_REPO_URL = "https://github.com/sysliveprime-ctrl/anthology-db.git"
 DB_MANIFEST_API = "https://api.github.com/repos/sysliveprime-ctrl/anthology-db/contents/db_version.json?ref=main"
 MO2_MANIFEST_API = "https://api.github.com/repos/sysliveprime-ctrl/anthology-mo2-modpack/contents/version.json?ref=main"
+
+CSI = "\033["
+RESET = f"{CSI}0m"
+BOLD = f"{CSI}1m"
+DIM = f"{CSI}2m"
+CYAN = f"{CSI}36m"
+GREEN = f"{CSI}32m"
+YELLOW = f"{CSI}33m"
+RED = f"{CSI}31m"
+MAGENTA = f"{CSI}35m"
 
 
 class PublishError(RuntimeError):
@@ -70,15 +81,91 @@ def next_version(current: str) -> str:
 
 
 def prompt(default: str, text: str) -> str:
-    value = input(f"{text} [{default}]: ").strip()
+    value = input(f"{CYAN}{text}{RESET} [{default}]: ").strip()
     return value or default
 
 
 def prompt_yes(text: str, yes: bool) -> bool:
     if yes:
         return True
-    value = input(f"{text} [y/N]: ").strip().lower()
+    value = input(f"{YELLOW}{text}{RESET} [y/N]: ").strip().lower()
+    if value in {"д", "да"}:
+        return True
     return value in {"y", "yes", "д", "да"}
+
+
+def clear_screen() -> None:
+    if sys.stdout.isatty():
+        os.system("cls" if os.name == "nt" else "clear")
+
+
+def line(char: str = "=", width: int = 72) -> str:
+    return char * width
+
+
+def banner() -> None:
+    clear_screen()
+    print(f"{MAGENTA}{line('=')}{RESET}")
+    print(f"{BOLD}{CYAN}  ANTHOLOGY RELEASE CONTROL{RESET}")
+    print(f"{DIM}  DB assets, MO2 modpack, manifests, GitHub releases{RESET}")
+    print(f"{MAGENTA}{line('=')}{RESET}\n")
+
+
+def card_row(label: str, value: str, color: str = RESET) -> None:
+    print(f"  {DIM}{label:<16}{RESET} {color}{value}{RESET}")
+
+
+def current_versions() -> tuple[str, str]:
+    db_current = read_json(WORKGIT_DIR / "db_version.json").get("version", "0.0.0.0")
+    mo2_current = read_json(MODPACK_DIR / "version.json").get("version", "0.0.0.0")
+    return db_current, mo2_current
+
+
+def print_dashboard(db_current: str, mo2_current: str) -> None:
+    print(f"{BOLD}Current state{RESET}")
+    card_row("DB local", db_current, GREEN)
+    card_row("MO2 local", mo2_current, GREEN)
+    print()
+    print(f"{BOLD}What changed?{RESET}")
+    print(f"  {CYAN}1{RESET}. DB only      {DIM}db/configs + db/mods release assets{RESET}")
+    print(f"  {CYAN}2{RESET}. MO2 only     {DIM}MO2 main.zip + version.json{RESET}")
+    print(f"  {CYAN}3{RESET}. DB + MO2     {DIM}publish both channels{RESET}")
+    print(f"  {CYAN}4{RESET}. Dry run      {DIM}preview checks without push/upload{RESET}")
+    print(f"  {CYAN}5{RESET}. Exit\n")
+
+
+def choose_target() -> tuple[str, bool]:
+    while True:
+        choice = input(f"{BOLD}Select action{RESET} [3]: ").strip().lower() or "3"
+        mapping = {
+            "1": ("db", False),
+            "db": ("db", False),
+            "2": ("mo2", False),
+            "mo2": ("mo2", False),
+            "3": ("all", False),
+            "all": ("all", False),
+            "4": ("all", True),
+            "dry": ("all", True),
+            "dry-run": ("all", True),
+            "5": ("exit", False),
+            "exit": ("exit", False),
+            "q": ("exit", False),
+        }
+        if choice in mapping:
+            return mapping[choice]
+        print(f"{RED}Unknown option. Use 1, 2, 3, 4, or 5.{RESET}")
+
+
+def print_release_plan(target: str, dry_run: bool, db_version: str | None, mo2_version: str | None) -> None:
+    print()
+    print(f"{BOLD}Release plan{RESET}")
+    card_row("target", target.upper(), CYAN)
+    card_row("mode", "DRY RUN" if dry_run else "PUBLISH", YELLOW if dry_run else GREEN)
+    if db_version:
+        card_row("DB version", db_version, GREEN)
+    if mo2_version:
+        card_row("MO2 version", mo2_version, GREEN)
+    print()
 
 
 def github_json(url: str) -> dict:
@@ -245,26 +332,50 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    target = args.target or prompt("all", "Что обновилось? db / mo2 / all").lower()
+    db_current, mo2_current = current_versions()
+    dry_run = args.dry_run
+
+    if args.target:
+        target = args.target
+    else:
+        banner()
+        print_dashboard(db_current, mo2_current)
+        target, menu_dry_run = choose_target()
+        dry_run = dry_run or menu_dry_run
+        if target == "exit":
+            print("Canceled.")
+            return 0
+
     if target not in {"db", "mo2", "all"}:
         raise PublishError("Target must be db, mo2, or all.")
 
-    db_current = read_json(WORKGIT_DIR / "db_version.json").get("version", "0.0.0.0")
-    mo2_current = read_json(MODPACK_DIR / "version.json").get("version", "0.0.0.0")
+    db_version = None
+    mo2_version = None
+    db_notes = None
+    mo2_notes = None
 
     if target in {"db", "all"}:
         default = args.version or args.db_version or next_version(db_current)
         db_version = args.db_version or args.version or prompt(default, "DB version")
         db_notes = args.db_notes or args.notes or prompt("Обновление DB Anthology.", "DB notes")
-        publish_db(db_version, db_notes, args.yes, args.dry_run)
 
     if target in {"mo2", "all"}:
         default = args.version or args.mo2_version or next_version(mo2_current)
         mo2_version = args.mo2_version or args.version or prompt(default, "MO2 version")
         mo2_notes = args.mo2_notes or args.notes or prompt("Обновление MO2 модпака.", "MO2 notes")
-        publish_mo2(mo2_version, mo2_notes, args.yes, args.dry_run)
 
-    print("\nDone.")
+    print_release_plan(target, dry_run, db_version, mo2_version)
+    if not prompt_yes("Start this release?", args.yes):
+        print("Canceled.")
+        return 0
+
+    if target in {"db", "all"} and db_version and db_notes is not None:
+        publish_db(db_version, db_notes, args.yes, dry_run)
+
+    if target in {"mo2", "all"} and mo2_version and mo2_notes is not None:
+        publish_mo2(mo2_version, mo2_notes, args.yes, dry_run)
+
+    print(f"\n{GREEN}Done.{RESET}")
     return 0
 
 
