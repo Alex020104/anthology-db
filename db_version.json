@@ -1,7 +1,7 @@
 {
-  "version": "2026.06.01.3",
+  "version": "2026.06.01.4",
   "mode": "mirror",
-  "base_url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.06.01.3/",
+  "base_url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.06.01.4/",
   "files": [
     {
       "path": "db/configs/ai.db0",
@@ -18,8 +18,8 @@
     {
       "path": "db/configs/configs_anthology.xdb0",
       "asset_name": "db_configs_configs_anthology.xdb0",
-      "size": 12839653,
-      "sha256": "504f736409aabcd929cd75382cd1c71f141f9ed7fca6e28e0e5cae37492237cf"
+      "size": 12850066,
+      "sha256": "9d9f4199e567b247c6d9eafcca36e78a47f62abc43c837906ac06313e4793ca2"
     },
     {
       "path": "db/configs/configs_deanon_artefact.xdb0",
@@ -60,8 +60,8 @@
     {
       "path": "db/mods/00_modded_exes_gamedata.db0",
       "asset_name": "db_mods_00_modded_exes_gamedata.db0",
-      "size": 560038,
-      "sha256": "006a6d8eaed6800e15319a4923f63db8e3f55f7723522338b43f7987803e7a40"
+      "size": 553803,
+      "sha256": "a070fd28d44d520848a3dcb9f4eaf0868532bf2685b4289665c8e205a40791bc"
     },
     {
       "path": "db/mods/[ANT] Mod Configuration Menu.xdb0",
@@ -166,5 +166,5 @@
       "sha256": "be557b4316b7aac09d00e24b10a71ca1b9a4908ce1a78757bd39a6b4be20e952"
     }
   ],
-  "notes": "Обновление DB Anthology."
+  "notes": "ИСПРАВЛЕН ВЫЛЕТ encyclopedia___anthology_developers"
 }
