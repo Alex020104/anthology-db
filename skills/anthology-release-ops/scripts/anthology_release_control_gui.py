@@ -273,21 +273,36 @@ class ReleaseControl(tk.Tk):
         top = ttk.Frame(news)
         top.pack(fill="x", pady=(0, 10))
         ttk.Button(top, text="Обновить список", command=self.refresh_news).pack(side="left", padx=(0, 8))
-        ttk.Button(top, text="Добавить сверху", command=self.add_news).pack(side="left", padx=(0, 8))
-        ttk.Button(top, text="Редактировать выбранную", command=self.edit_news).pack(side="left", padx=(0, 8))
+        ttk.Button(top, text="Новая новость", command=self.new_news_draft).pack(side="left", padx=(0, 8))
+        ttk.Button(top, text="Выпустить как новую", command=self.add_news, style="Accent.TButton").pack(side="left", padx=(0, 8))
+        ttk.Button(top, text="Сохранить выбранную", command=self.edit_news, style="Accent.TButton").pack(side="left", padx=(0, 8))
         ttk.Button(top, text="Удалить выбранную", command=self.delete_news, style="Danger.TButton").pack(side="left")
 
-        columns = ("index", "title", "title_en", "body")
-        self.news_tree = ttk.Treeview(news, columns=columns, show="headings", height=12)
+        editor = ttk.PanedWindow(news, orient="horizontal")
+        editor.pack(fill="both", expand=True)
+
+        list_frame = ttk.Frame(editor)
+        editor.add(list_frame, weight=1)
+        form = ttk.Frame(editor, padding=(14, 0, 0, 0))
+        editor.add(form, weight=3)
+
+        columns = ("index", "title")
+        self.news_tree = ttk.Treeview(list_frame, columns=columns, show="headings", height=12)
         self.news_tree.heading("index", text="#")
-        self.news_tree.heading("title", text="RU заголовок")
-        self.news_tree.heading("title_en", text="EN title")
-        self.news_tree.heading("body", text="RU текст")
+        self.news_tree.heading("title", text="Новость")
         self.news_tree.column("index", width=54, stretch=False, anchor="center")
-        self.news_tree.column("title", width=260)
-        self.news_tree.column("title_en", width=260)
-        self.news_tree.column("body", width=420)
+        self.news_tree.column("title", width=300)
         self.news_tree.pack(fill="both", expand=True)
+        self.news_tree.bind("<<TreeviewSelect>>", lambda _event: self.load_selected_news_into_form())
+
+        self.news_ru_title = tk.StringVar()
+        self.news_en_title = tk.StringVar()
+        self.news_selected_label = tk.StringVar(value="Выбрана: новая новость")
+        ttk.Label(form, textvariable=self.news_selected_label, style="Muted.TLabel").pack(anchor="w", pady=(0, 8))
+        self._form_entry(form, "RU заголовок", self.news_ru_title)
+        self.news_ru_body = self._form_text(form, "RU текст", height=6)
+        self._form_entry(form, "EN title", self.news_en_title)
+        self.news_en_body = self._form_text(form, "EN body", height=6)
 
     def _build_engine_tab(self) -> None:
         tab = ttk.Frame(self.notebook, padding=14)
@@ -310,6 +325,29 @@ class ReleaseControl(tk.Tk):
         row.pack(fill="x")
         ttk.Button(row, text="Все git-статусы", command=self.all_git_statuses).pack(side="left", padx=(0, 8))
         ttk.Button(row, text="Проверить публичный launcher", command=self.check_launcher_public).pack(side="left")
+
+    def _form_entry(self, parent: ttk.Frame, label: str, variable: tk.StringVar) -> None:
+        ttk.Label(parent, text=label, style="Muted.TLabel").pack(anchor="w", pady=(0, 4))
+        entry = ttk.Entry(parent, textvariable=variable)
+        entry.pack(fill="x", pady=(0, 10))
+
+    def _form_text(self, parent: ttk.Frame, label: str, height: int) -> tk.Text:
+        ttk.Label(parent, text=label, style="Muted.TLabel").pack(anchor="w", pady=(0, 4))
+        text = tk.Text(
+            parent,
+            height=height,
+            wrap="word",
+            bg=COLORS["log_bg"],
+            fg=COLORS["log_text"],
+            insertbackground=COLORS["log_text"],
+            selectbackground="#245d55",
+            selectforeground="#ffffff",
+            relief="flat",
+            borderwidth=0,
+            font=("Segoe UI", 10),
+        )
+        text.pack(fill="both", expand=True, pady=(0, 10))
+        return text
 
     def refresh_versions(self, refresh_news: bool = False) -> None:
         def work() -> None:
@@ -391,13 +429,15 @@ class ReleaseControl(tk.Tk):
         en_by_index = {int(item["index"]): item for item in self.news_items_en}
         for item in self.news_items:
             en_item = en_by_index.get(int(item["index"]), {})
-            body = str(item.get("body", "")).replace("\n", " ")
             self.news_tree.insert(
                 "",
                 "end",
                 iid=str(item["index"]),
-                values=(item["index"], item.get("title", ""), en_item.get("title", ""), body),
+                values=(item["index"], f"{item.get('title', '')} / {en_item.get('title', '')}"),
             )
+        if self.news_items and not self.news_tree.selection():
+            self.news_tree.selection_set(str(self.news_items[0]["index"]))
+            self.load_selected_news_into_form()
 
     def run_git_status(self, root: Path) -> None:
         self.run_command(["git", "status", "--short", "--branch"], root, title=f"git status: {root}")
@@ -464,17 +504,9 @@ class ReleaseControl(tk.Tk):
         version = self.ask_version("лаунчера")
         if not version:
             return
-        title = simpledialog.askstring("Новая новость RU", "Русский заголовок:", parent=self)
-        if not title:
-            return
-        body = MultilineDialog(self, "Новая новость RU", "Русский текст новости:").result
-        if not body:
-            return
-        title_en = simpledialog.askstring("New launcher news EN", "English title:", initialvalue=title, parent=self)
-        if title_en is None:
-            return
-        body_en = MultilineDialog(self, "New launcher news EN", "English news body:", initial=body).result
-        if body_en is None:
+        title, body, title_en, body_en = self.news_form_values()
+        if not title or not body:
+            messagebox.showwarning("Новости", "Заполни хотя бы RU заголовок и RU текст.")
             return
         notes = f"Новость лаунчера: {title}"
         if not self.confirm_publish("новость лаунчера", version, LAUNCHER_DIR):
@@ -502,10 +534,11 @@ class ReleaseControl(tk.Tk):
             title=f"Add launcher news {version}",
         )
 
-    def selected_news(self) -> dict | None:
+    def selected_news(self, warn: bool = True) -> dict | None:
         selection = self.news_tree.selection()
         if not selection:
-            messagebox.showwarning("Новости", "Сначала выбери новость в таблице.")
+            if warn:
+                messagebox.showwarning("Новости", "Сначала выбери новость в списке слева.")
             return None
         index = int(selection[0])
         return next((item for item in self.news_items if int(item["index"]) == index), None)
@@ -513,35 +546,50 @@ class ReleaseControl(tk.Tk):
     def english_news_for(self, index: int) -> dict:
         return next((item for item in self.news_items_en if int(item["index"]) == index), {})
 
+    def set_text_value(self, widget: tk.Text, value: str) -> None:
+        widget.delete("1.0", "end")
+        widget.insert("1.0", value)
+
+    def text_value(self, widget: tk.Text) -> str:
+        return widget.get("1.0", "end").strip()
+
+    def news_form_values(self) -> tuple[str, str, str, str]:
+        title = self.news_ru_title.get().strip()
+        body = self.text_value(self.news_ru_body)
+        title_en = self.news_en_title.get().strip() or title
+        body_en = self.text_value(self.news_en_body) or body
+        return title, body, title_en, body_en
+
+    def new_news_draft(self) -> None:
+        self.news_tree.selection_remove(self.news_tree.selection())
+        self.news_selected_label.set("Выбрана: новая новость")
+        self.news_ru_title.set("")
+        self.news_en_title.set("")
+        self.set_text_value(self.news_ru_body, "")
+        self.set_text_value(self.news_en_body, "")
+
+    def load_selected_news_into_form(self) -> None:
+        item = self.selected_news(warn=False)
+        if not item:
+            return
+        index = int(item["index"])
+        en_item = self.english_news_for(index)
+        self.news_selected_label.set(f"Выбрана: новость #{index}")
+        self.news_ru_title.set(str(item.get("title", "")))
+        self.set_text_value(self.news_ru_body, str(item.get("body", "")))
+        self.news_en_title.set(str(en_item.get("title", "")))
+        self.set_text_value(self.news_en_body, str(en_item.get("body", "")))
+
     def edit_news(self) -> None:
         item = self.selected_news()
         if not item:
             return
-        en_item = self.english_news_for(int(item["index"]))
         version = self.ask_version("лаунчера")
         if not version:
             return
-        title = simpledialog.askstring("Редактировать новость RU", "Русский заголовок:", initialvalue=str(item["title"]), parent=self)
-        if not title:
-            return
-        body = MultilineDialog(self, "Редактировать новость RU", "Русский текст:", initial=str(item["body"])).result
-        if not body:
-            return
-        title_en = simpledialog.askstring(
-            "Edit news EN",
-            "English title:",
-            initialvalue=str(en_item.get("title") or title),
-            parent=self,
-        )
-        if title_en is None:
-            return
-        body_en = MultilineDialog(
-            self,
-            "Edit news EN",
-            "English body:",
-            initial=str(en_item.get("body") or body),
-        ).result
-        if body_en is None:
+        title, body, title_en, body_en = self.news_form_values()
+        if not title or not body:
+            messagebox.showwarning("Новости", "Заполни хотя бы RU заголовок и RU текст.")
             return
         index = str(item["index"])
         if not self.confirm_publish(f"редактирование новости #{index}", version, LAUNCHER_DIR):
