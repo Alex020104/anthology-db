@@ -1,7 +1,7 @@
 {
-  "version": "2026.06.30.1",
+  "version": "2026.07.03.1",
   "mode": "mirror",
-  "base_url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.06.30.1/",
+  "base_url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.03.1/",
   "files": [
     {
       "path": "db/configs/ai.db0",
@@ -20,8 +20,8 @@
     {
       "path": "db/configs/configs_anthology.xdb0",
       "asset_name": "db_configs_configs_anthology.xdb0",
-      "size": 13064259,
-      "sha256": "ce47c3a99bab87074a16db490cf16d2a56e20d556ee7b8fae633e4dd7a90c71a"
+      "size": 12928207,
+      "sha256": "b68585cb2d50db6c1ef8066b6a4a86e2e3073c691dd356b90f48d4eef3a4fdd2"
     },
     {
       "path": "db/configs/configs_deanon_artefact.xdb0",
@@ -47,8 +47,8 @@
     {
       "path": "db/configs/scripts_anthology.xdb0",
       "asset_name": "db_configs_scripts_anthology.xdb0",
-      "size": 1382990,
-      "sha256": "5f0e24187bf9fa18f98acfa0a1b9a93a438e33dcf8fe4a82086f68cdcf4eb186"
+      "size": 1389706,
+      "sha256": "3114895ff82bbc6920fae62ef6b1cb0e2123c3f45393967514d0aa24fe300d85"
     },
     {
       "path": "db/configs/scripts_smart_covers_cs.xdb0",
@@ -74,9 +74,8 @@
     {
       "path": "db/mods/[ANT] Sota ui for Anthology.xdb0",
       "asset_name": "db_mods_ANT_Sota_ui_for_Anthology.xdb0",
-      "size": 147058742,
-      "sha256": "e03363dbe9e48d64ea8b6720b6f1ce1eb89cd67201c59a4c06e46a9bda7b2cda",
-      "url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.06.07.1/db_mods_ANT_Sota_ui_for_Anthology.xdb0"
+      "size": 185306342,
+      "sha256": "bc00c1ead8166ce9482a59084c40056b789df8ade68077cc63395677f00e0188"
     },
     {
       "path": "db/mods/alarm_wake_up.xdb0",
