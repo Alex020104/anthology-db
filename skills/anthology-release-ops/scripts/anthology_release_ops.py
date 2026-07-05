@@ -24,11 +24,12 @@ def configured_path(env_name: str, default: str | Path) -> Path:
     return Path(os.environ.get(env_name, str(default)))
 
 
-WORKGIT_DIR = configured_path("ANTHOLOGY_WORKGIT_DIR", r"F:\Editor_Stalker\Anthology-Work-Git")
-LAUNCHER_DIR = configured_path("ANTHOLOGY_LAUNCHER_DIR", WORKGIT_DIR / "projects" / "AnthologyLauncher")
-MODPACK_DIR = configured_path("ANTHOLOGY_MODPACK_DIR", r"D:\ANTHOLOGY\SYS_A.N.T.H.O.L.O.G.Y_mo2_CBT\mods")
-SOURCE_DIR = configured_path("ANTHOLOGY_SOURCE_DIR", WORKGIT_DIR / "projects" / "anthology-source")
-LIVE_GAME_DIR = configured_path("ANTHOLOGY_LIVE_GAME_DIR", r"D:\ANTHOLOGY\Anomaly-1.5.3-Anthology 2.1")
+# ===== ИСПРАВЛЕННЫЕ ПУТИ =====
+WORKGIT_DIR = configured_path("ANTHOLOGY_WORKGIT_DIR", r"X:\OpenAI\anomaly-codex-main\projects\Anthology-Work-Git")
+LAUNCHER_DIR = configured_path("ANTHOLOGY_LAUNCHER_DIR", r"X:\OpenAI\anomaly-codex-main\projects\Anthology-Work-Git\projects\AnthologyLauncher")
+MODPACK_DIR = configured_path("ANTHOLOGY_MODPACK_DIR", r"X:\S.T.A.L.K.E.R\A.N.T.H.O.L.O.G.Y\ANTHOLOGY\SYS_A.N.T.H.O.L.O.G.Y_mo2_CBT\mods")
+SOURCE_DIR = configured_path("ANTHOLOGY_SOURCE_DIR", r"X:\OpenAI\anomaly-codex-main\projects\Anthology-Work-Git\projects\anthology-source")
+LIVE_GAME_DIR = configured_path("ANTHOLOGY_LIVE_GAME_DIR", r"X:\S.T.A.L.K.E.R\A.N.T.H.O.L.O.G.Y\ANTHOLOGY\Anomaly-1.5.3-Anthology 2.1")
 DB_DIR = WORKGIT_DIR
 UPDATE_RULES_FILE = LAUNCHER_DIR / "assets" / "update_rules.json"
 
@@ -42,22 +43,32 @@ def read_update_rules() -> dict:
 UPDATE_RULES = read_update_rules()
 DB_RULES = UPDATE_RULES.get("db", {})
 MO2_RULES = UPDATE_RULES.get("mo2", {})
+
+# Базовые пути (источники DB) — теперь берутся из LIVE_GAME_DIR
 DB_SOURCE_DIRS = {
     "configs": LIVE_GAME_DIR / "db" / "configs",
     "mods": LIVE_GAME_DIR / "db" / "mods",
 }
 DB_SOURCE_DIRS.update({key: Path(value) for key, value in DB_RULES.get("source_dirs", {}).items()})
+
+# Список файлов, которые мы точно будем заливать (если они существуют)
 DB_SOURCE_FILES = {
     "db/shaders_anthology.xdb0": LIVE_GAME_DIR / "db" / "shaders_anthology.xdb0",
     "db/textures/textures_trees.xdb0": LIVE_GAME_DIR / "db" / "textures" / "textures_trees.xdb0",
     "db/textures/textures_trees.xdb1": LIVE_GAME_DIR / "db" / "textures" / "textures_trees.xdb1",
     "db/textures/textures_trees.xdb3": LIVE_GAME_DIR / "db" / "textures" / "textures_trees.xdb3",
 }
+# Дополнительные правила из update_rules.json
 DB_SOURCE_FILES.update({key: Path(value) for key, value in DB_RULES.get("source_files", {}).items()})
+
+# Исключаем файлы, которые не должны попадать в релиз (или которых нет)
 DB_EXCLUDED_REL_PATHS = {
     "db/mods/00_modded_exes_gamedata.db0",
+    "db/configs/configs_anthology.xdb0",           # если файла нет — исключаем
+    "db/textures/textures_actors_gnra.xdb0",       # часто отсутствует
 }
 DB_EXCLUDED_REL_PATHS.update(path.casefold() for path in DB_RULES.get("excluded_rel_paths", []))
+
 DB_REMOVED_REL_PATHS = {
     str(path).replace("\\", "/").casefold()
     for path in DB_RULES.get("removed_files", [])
