@@ -1,7 +1,7 @@
 {
-  "version": "2026.07.05.1",
+  "version": "2026.07.05.5",
   "mode": "mirror",
-  "base_url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.05.1/",
+  "base_url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.05.5/",
   "files": [
     {
       "path": "db/configs/ai.db0",
@@ -21,7 +21,8 @@
       "path": "db/configs/configs_anthology.xdb0",
       "asset_name": "db_configs_configs_anthology.xdb0",
       "size": 12929611,
-      "sha256": "217963a802d7d51ab3c9a56cb097822b6071e772ed75c7e177fda19a39829aee"
+      "sha256": "217963a802d7d51ab3c9a56cb097822b6071e772ed75c7e177fda19a39829aee",
+      "url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.05.1/db_configs_configs_anthology.xdb0"
     },
     {
       "path": "db/configs/configs_deanon_artefact.xdb0",
@@ -48,7 +49,8 @@
       "path": "db/configs/scripts_anthology.xdb0",
       "asset_name": "db_configs_scripts_anthology.xdb0",
       "size": 1390431,
-      "sha256": "36bdcc74e2949bf84191c389a73ab7ef7c49b088a340fca5a8d556daf6e86db1"
+      "sha256": "36bdcc74e2949bf84191c389a73ab7ef7c49b088a340fca5a8d556daf6e86db1",
+      "url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.05.1/db_configs_scripts_anthology.xdb0"
     },
     {
       "path": "db/configs/scripts_smart_covers_cs.xdb0",
@@ -75,7 +77,8 @@
       "path": "db/mods/[ANT] Sota ui for Anthology.xdb0",
       "asset_name": "db_mods_ANT_Sota_ui_for_Anthology.xdb0",
       "size": 185303708,
-      "sha256": "a583b0070d6cbf470760f5fbe9cbffe558e6e659709d1e99a456c05449285f04"
+      "sha256": "a583b0070d6cbf470760f5fbe9cbffe558e6e659709d1e99a456c05449285f04",
+      "url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.05.1/db_mods_ANT_Sota_ui_for_Anthology.xdb0"
     },
     {
       "path": "db/mods/alarm_wake_up.xdb0",
@@ -193,7 +196,8 @@
       "path": "db/textures/textures_fix.xdb0",
       "asset_name": "db_textures_textures_fix.xdb0",
       "size": 47730726,
-      "sha256": "d8cce4a0d365936e634053f65a798e1ec4d25de6be6c74dbcb33447fffe1d83d"
+      "sha256": "d8cce4a0d365936e634053f65a798e1ec4d25de6be6c74dbcb33447fffe1d83d",
+      "url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.05.1/db_textures_textures_fix.xdb0"
     },
     {
       "path": "db/textures/textures_trees.xdb0",
