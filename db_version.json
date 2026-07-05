@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.06.6",
+  "version": "2026.07.06.7",
   "files": [
     {
       "path": "db/configs/ai.db0",
@@ -12,12 +12,6 @@
       "asset_name": "db_configs_configs.xdb0",
       "size": 6453529,
       "sha256": "3482d7b00823b5473f0bcb78706d49dd512d5c24f952b04b7a6f61df1b6b296e"
-    },
-    {
-      "path": "db/configs/configs_anthology.xdb0",
-      "asset_name": "db_configs_configs_anthology.xdb0",
-      "size": 12929611,
-      "sha256": "217963a802d7d51ab3c9a56cb097822b6071e772ed75c7e177fda19a39829aee"
     },
     {
       "path": "db/configs/configs_deanon_artefact.xdb0",
@@ -176,8 +170,10 @@
       "sha256": "ee9ff717d5413e5b7ae8459a4d3e6724c3257429ede110206bf8f07416cf669a"
     }
   ],
-  "base_url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.06.6/",
+  "base_url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.06.7/",
   "mode": "mirror",
-  "notes": "Restore configs_anthology.xdb0",
-  "removed_files": []
+  "notes": "Remove configs_anthology.xdb0 from manifest",
+  "removed_files": [
+    "db/configs/configs_anthology.xdb0"
+  ]
 }
