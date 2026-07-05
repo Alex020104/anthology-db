@@ -179,6 +179,12 @@
       "url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.06.9/db_shaders_anthology.xdb0"
     },
     {
+      "path": "db/textures/textures_fix.xdb0",
+      "asset_name": "db_textures_textures_fix.xdb0",
+      "size": 47730726,
+      "sha256": "d8cce4a0d365936e634053f65a798e1ec4d25de6be6c74dbcb33447fffe1d83d"
+    },
+    {
       "path": "db/textures/textures_trees.xdb0",
       "asset_name": "db_textures_textures_trees.xdb0",
       "size": 60368387,
@@ -200,7 +206,7 @@
       "url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.06.9/db_textures_textures_trees.xdb3"
     }
   ],
-  "notes": "Обновление DB Anthology.",
+  "notes": "add textures_fix.xdb0",
   "removed_files": [
     "db/mods/zhopa.xdb0",
     "db/textures/textures_actors_gnra.xdb1"
