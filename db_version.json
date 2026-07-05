@@ -1,5 +1,5 @@
 {
-  "version": "2026.07.05.5",
+  "version": "2026.07.05.8",
   "files": [
     {
       "path": "db/configs/ai.db0",
@@ -61,7 +61,8 @@
       "path": "db/files.xdb0",
       "asset_name": "db_files.xdb0",
       "size": 400065,
-      "sha256": "fe78cacf16d8a6b6b5945fcc3b23962abc720fc1d5f40e5d4466074e4ed8eef5"
+      "sha256": "fe78cacf16d8a6b6b5945fcc3b23962abc720fc1d5f40e5d4466074e4ed8eef5",
+      "url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.05.5/db_files.xdb0"
     },
     {
       "path": "db/mods/[ANT] Mod Configuration Menu.xdb0",
@@ -179,7 +180,8 @@
       "path": "db/shaders.db0",
       "asset_name": "db_shaders.db0",
       "size": 935729,
-      "sha256": "f18413b82890ea43bc55ec50df2c6477d451c8dabfe09cc4b5c040f0ee8de669"
+      "sha256": "f18413b82890ea43bc55ec50df2c6477d451c8dabfe09cc4b5c040f0ee8de669",
+      "url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.05.5/db_shaders.db0"
     },
     {
       "path": "db/shaders_anthology.xdb0",
@@ -217,7 +219,7 @@
       "url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.06.4/db_textures_textures_trees.xdb3"
     }
   ],
-  "base_url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.05.5/",
+  "base_url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.05.8/",
   "mode": "mirror",
   "notes": "Обновление DB Anthology.",
   "removed_files": []
