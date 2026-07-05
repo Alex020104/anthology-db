@@ -173,5 +173,9 @@
   "base_url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.06.1/",
   "mode": "mirror",
   "notes": "DB update",
-  "removed_files": []
+  "removed_files": [
+    "db/configs/configs_anthology.xdb0",
+    "db/textures/textures_actors_gnra.xdb0",
+    "db/textures/textures_fix.xdb0"
+  ]
 }
