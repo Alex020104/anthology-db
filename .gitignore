@@ -11,3 +11,5 @@ projects/anthology-source/
 projects/xray-monolith/
 publish_anthology_gui.cmd
 publish_anthology_update.cmd
+skills/anthology-release-ops/scripts/anthology_release_ops.py
+skills/anthology-release-ops/scripts/anthology_release_control_gui.py
