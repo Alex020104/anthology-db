@@ -9,3 +9,5 @@ safe_backups/
 
 projects/anthology-source/
 projects/xray-monolith/
+publish_anthology_gui.cmd
+publish_anthology_update.cmd
