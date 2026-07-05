@@ -190,6 +190,6 @@
   ],
   "base_url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.06.9/",
   "mode": "mirror",
-  "notes": "Remove configs_anthology",
+  "notes": "Обновление DB Anthology.",
   "removed_files": []
 }
