@@ -116,6 +116,7 @@ MODPACK_REPO = "sysliveprime-ctrl/anthology-mo2-modpack"
 DB_REPO = "sysliveprime-ctrl/anthology-db"
 SOURCE_REPO = "sysliveprime-ctrl/anthology-source"
 LAUNCHER_ASSET = "AnomalyLauncher.exe"
+LAUNCHER_RAW_ASSET = Path("release") / LAUNCHER_ASSET
 MODPACK_ALLOWED_PARTS = set(MO2_RULES.get("allowed_parts", ["configs", "scripts", "textures"]))
 MODPACK_MANAGED_STANDARD_FOLDER_NAMES = set(MO2_RULES.get("managed_standard_folders", []))
 MODPACK_MANAGED_FULL_FOLDER_NAMES = set(MO2_RULES.get("managed_full_folders", [
@@ -336,7 +337,7 @@ def update_launcher_version(root: Path, version: str, notes: str) -> None:
     data = read_json(meta)
     data["version"] = version
     data["notes"] = notes
-    data["exe_url"] = f"https://github.com/{LAUNCHER_REPO}/releases/download/{version}/{LAUNCHER_ASSET}"
+    data["exe_url"] = f"https://raw.githubusercontent.com/{LAUNCHER_REPO}/main/{LAUNCHER_RAW_ASSET.as_posix()}?v={version}"
     write_json(meta, data)
 
 
@@ -574,6 +575,10 @@ def command_launcher(args: argparse.Namespace) -> None:
     exe = root / "dist" / LAUNCHER_ASSET
     if not args.skip_build and not exe.exists():
         raise ReleaseError(f"Built exe not found: {exe}")
+    if not args.skip_build:
+        raw_asset = root / LAUNCHER_RAW_ASSET
+        raw_asset.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(exe, raw_asset)
 
     commit = commit_push(root, args.message or f"Bump launcher to {version}", args.dry_run)
 

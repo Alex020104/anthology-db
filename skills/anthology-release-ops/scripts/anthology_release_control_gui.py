@@ -726,7 +726,7 @@ class ReleaseControl(tk.Tk):
 
         launcher = ttk.Labelframe(tab, text="Лаунчер", padding=14)
         launcher.pack(fill="x", pady=(0, 14))
-        ttk.Label(launcher, text="Сборка exe, commit/push и загрузка AnomalyLauncher.exe в release с тегом версии. exe_url указывает на конкретный тег.", style="CardMuted.TLabel").pack(anchor="w")
+        ttk.Label(launcher, text="Сборка exe, commit/push и выдача AnomalyLauncher.exe через raw.githubusercontent.com/release/AnomalyLauncher.exe. GitHub Release остаётся запасным каналом.", style="CardMuted.TLabel").pack(anchor="w")
         row = ttk.Frame(launcher)
         row.pack(fill="x", pady=(12, 0))
         ttk.Button(row, text="Git-статус лаунчера", command=lambda: self.run_git_status(LAUNCHER_DIR)).pack(side="left", padx=(0, 8))
