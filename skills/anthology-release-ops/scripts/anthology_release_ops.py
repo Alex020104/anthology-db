@@ -336,7 +336,7 @@ def update_launcher_version(root: Path, version: str, notes: str) -> None:
     data = read_json(meta)
     data["version"] = version
     data["notes"] = notes
-    data["exe_url"] = f"https://github.com/{LAUNCHER_REPO}/releases/latest/download/{LAUNCHER_ASSET}?v={version}"
+    data["exe_url"] = f"https://github.com/{LAUNCHER_REPO}/releases/download/{version}/{LAUNCHER_ASSET}"
     write_json(meta, data)
 
 
@@ -583,7 +583,7 @@ def command_launcher(args: argparse.Namespace) -> None:
         print("Skip GitHub launcher asset upload.")
     else:
         token = github_token()
-        release = latest_release(LAUNCHER_REPO, token)
+        release = release_by_tag(LAUNCHER_REPO, version, token) or create_release(LAUNCHER_REPO, version, token, notes)
         asset = upload_asset(release, exe, LAUNCHER_ASSET, token)
         asset_size = asset.get("size")
         asset_url = asset.get("browser_download_url")
