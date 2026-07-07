@@ -25,17 +25,35 @@ def configured_path(env_name: str, default: str | Path) -> Path:
     return Path(os.environ.get(env_name, str(default)))
 
 
-WORKGIT_DIR = configured_path("ANTHOLOGY_WORKGIT_DIR", r"F:\Editor_Stalker\Anthology-Work-Git")
-HELPER = configured_path("ANTHOLOGY_RELEASE_HELPER", WORKGIT_DIR / "skills" / "anthology-release-ops" / "scripts" / "anthology_release_ops.py")
-LAUNCHER_DIR = configured_path("ANTHOLOGY_LAUNCHER_DIR", WORKGIT_DIR / "projects" / "AnthologyLauncher")
-MODPACK_DIR = configured_path("ANTHOLOGY_MODPACK_DIR", r"D:\ANTHOLOGY\SYS_A.N.T.H.O.L.O.G.Y_mo2_CBT\mods")
-ENGINE_DIR = configured_path("ANTHOLOGY_ENGINE_DIR", WORKGIT_DIR / "projects" / "xray-monolith")
+def read_release_local_config(workgit_dir: Path) -> dict:
+    path = Path(os.environ.get("ANTHOLOGY_RELEASE_LOCAL_CONFIG", workgit_dir / "release.local.json"))
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8-sig"))
+
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+DEFAULT_WORKGIT_DIR = SCRIPT_DIR.parents[2]
+WORKGIT_DIR = configured_path("ANTHOLOGY_WORKGIT_DIR", DEFAULT_WORKGIT_DIR)
+LOCAL_CONFIG = read_release_local_config(WORKGIT_DIR)
+LOCAL_PATHS = LOCAL_CONFIG.get("paths", {}) if isinstance(LOCAL_CONFIG.get("paths", {}), dict) else {}
+
+
+def configured_local_path(key: str, env_name: str, default: str | Path) -> Path:
+    return Path(os.environ.get(env_name) or LOCAL_PATHS.get(key) or str(default))
+
+
+HELPER = configured_local_path("release_helper", "ANTHOLOGY_RELEASE_HELPER", WORKGIT_DIR / "skills" / "anthology-release-ops" / "scripts" / "anthology_release_ops.py")
+LAUNCHER_DIR = configured_local_path("launcher_dir", "ANTHOLOGY_LAUNCHER_DIR", WORKGIT_DIR / "projects" / "AnthologyLauncher")
+MODPACK_DIR = configured_local_path("modpack_dir", "ANTHOLOGY_MODPACK_DIR", r"X:\S.T.A.L.K.E.R\A.N.T.H.O.L.O.G.Y\ANTHOLOGY\SYS_A.N.T.H.O.L.O.G.Y_mo2_CBT\mods")
+ENGINE_DIR = configured_local_path("engine_dir", "ANTHOLOGY_ENGINE_DIR", WORKGIT_DIR / "projects" / "xray-monolith")
 ENGINE_BRANCH = "anthology-2026.5.8-mt-nanfix"
 ENGINE_REPO = "sysliveprime-ctrl/xray-monolith"
-ENGINE_BUILD_SCRIPT = configured_path("ANTHOLOGY_ENGINE_BUILD_SCRIPT", WORKGIT_DIR / "tools" / "build_anthology_engine.ps1")
-LIVE_GAME_DIR = configured_path("ANTHOLOGY_LIVE_GAME_DIR", r"D:\ANTHOLOGY\Anomaly-1.5.3-Anthology 2.1")
+ENGINE_BUILD_SCRIPT = configured_local_path("engine_build_script", "ANTHOLOGY_ENGINE_BUILD_SCRIPT", WORKGIT_DIR / "tools" / "build_anthology_engine.ps1")
+LIVE_GAME_DIR = configured_local_path("live_game_dir", "ANTHOLOGY_LIVE_GAME_DIR", r"X:\S.T.A.L.K.E.R\A.N.T.H.O.L.O.G.Y\ANTHOLOGY\Anomaly-1.5.3-Anthology 2.1")
 LIVE_BIN_DIR = LIVE_GAME_DIR / "bin"
 LIVE_ENGINE_DB = LIVE_GAME_DIR / "db" / "mods" / "00_modded_exes_gamedata.db0"
+UPDATE_RULES_FILE = LAUNCHER_DIR / "assets" / "update_rules.json"
 DB_SOURCE_DIRS = {
     "configs": LIVE_GAME_DIR / "db" / "configs",
     "mods": LIVE_GAME_DIR / "db" / "mods",
@@ -49,6 +67,24 @@ DB_SOURCE_FILES = {
 DB_EXCLUDED_REL_PATHS = {
     "db/mods/00_modded_exes_gamedata.db0",
 }
+
+
+def normalize_rel_path(value: str) -> str:
+    return str(value).replace("\\", "/").strip("/")
+
+
+def db_source_dir_for(folder: str, _configured_value: str | Path | None = None) -> Path:
+    return LIVE_GAME_DIR / "db" / normalize_rel_path(folder)
+
+
+def db_source_file_for(rel: str, configured_value: str | Path | None = None) -> Path:
+    rel = normalize_rel_path(rel)
+    parts = Path(rel).parts
+    if parts and parts[0].lower() == "db":
+        return LIVE_GAME_DIR / Path(*parts)
+    if configured_value:
+        return Path(configured_value)
+    return LIVE_GAME_DIR / rel
 
 DB_REPO_URL = "https://github.com/sysliveprime-ctrl/anthology-db.git"
 DB_MANIFEST_API = "https://api.github.com/repos/sysliveprime-ctrl/anthology-db/contents/db_version.json?ref=main"
@@ -102,6 +138,12 @@ def run(args: list[str], cwd: Path | None = None, capture: bool = False) -> str:
 
 def read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8-sig"))
+
+
+def read_update_rules() -> dict:
+    if not UPDATE_RULES_FILE.exists():
+        return {"db": {"source_dirs": {}, "source_files": {}, "removed_files": [], "excluded_rel_paths": []}}
+    return read_json(UPDATE_RULES_FILE)
 
 
 def read_version(path: Path, fallback: str = "not configured") -> str:
@@ -402,14 +444,22 @@ def db_asset_name(rel_path: str) -> str:
 
 def live_db_files() -> dict[str, dict]:
     files: dict[str, dict] = {}
-    for folder, base in DB_SOURCE_DIRS.items():
+    rules = read_update_rules().get("db", {})
+    source_dirs = dict(DB_SOURCE_DIRS)
+    source_dirs.update({normalize_rel_path(key): db_source_dir_for(key, value) for key, value in rules.get("source_dirs", {}).items()})
+    source_files = dict(DB_SOURCE_FILES)
+    source_files.update({normalize_rel_path(key): db_source_file_for(key, value) for key, value in rules.get("source_files", {}).items()})
+    excluded = {path.casefold() for path in DB_EXCLUDED_REL_PATHS}
+    excluded.update(path.casefold() for path in rules.get("excluded_rel_paths", []))
+    removed = {str(path).replace("\\", "/").casefold() for path in rules.get("removed_files", [])}
+    for folder, base in source_dirs.items():
         if not base.exists():
             continue
         for path in sorted(base.rglob("*")):
             if not path.is_file():
                 continue
             rel = (Path("db") / folder / path.relative_to(base)).as_posix()
-            if rel.casefold() in DB_EXCLUDED_REL_PATHS:
+            if rel.casefold() in excluded or rel.casefold() in removed:
                 continue
             files[rel] = {
                 "path": rel,
@@ -417,8 +467,8 @@ def live_db_files() -> dict[str, dict]:
                 "size": path.stat().st_size,
                 "sha256": sha256_file(path),
             }
-    for rel, path in DB_SOURCE_FILES.items():
-        if path.exists() and rel.casefold() not in DB_EXCLUDED_REL_PATHS:
+    for rel, path in source_files.items():
+        if path.exists() and rel.casefold() not in excluded and rel.casefold() not in removed:
             files[rel] = {
                 "path": rel,
                 "asset_name": db_asset_name(rel),

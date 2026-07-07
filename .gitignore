@@ -4,6 +4,7 @@ db/
 release/
 dist/
 *.zip
+release.local.json
 projects/AnthologyLauncher/
 safe_backups/
 
