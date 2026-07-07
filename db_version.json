@@ -1,7 +1,7 @@
 {
-  "version": "2026.07.05.12",
+  "version": "2026.07.07.1",
   "mode": "mirror",
-  "base_url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.05.12/",
+  "base_url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.07.1/",
   "files": [
     {
       "path": "db/configs/ai.db0",
@@ -16,6 +16,12 @@
       "size": 6453529,
       "sha256": "3482d7b00823b5473f0bcb78706d49dd512d5c24f952b04b7a6f61df1b6b296e",
       "url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.06.9/db_configs_configs.xdb0"
+    },
+    {
+      "path": "db/configs/configs_anthology.xdb0",
+      "asset_name": "db_configs_configs_anthology.xdb0",
+      "size": 12929611,
+      "sha256": "217963a802d7d51ab3c9a56cb097822b6071e772ed75c7e177fda19a39829aee"
     },
     {
       "path": "db/configs/configs_deanon_artefact.xdb0",
@@ -58,6 +64,12 @@
       "size": 46450377,
       "sha256": "b7b56efe07a7852b47d2650a1bcf9132b28206bfed8d4aec8d3c4394e060297a",
       "url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.06.9/db_configs_spawns.xdb0"
+    },
+    {
+      "path": "db/files.xdb0",
+      "asset_name": "db_files.xdb0",
+      "size": 400065,
+      "sha256": "fe78cacf16d8a6b6b5945fcc3b23962abc720fc1d5f40e5d4466074e4ed8eef5"
     },
     {
       "path": "db/mods/[ANT] Mod Configuration Menu.xdb0",
@@ -172,6 +184,12 @@
       "url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.06.9/db_mods_trader_autoinject.xdb0"
     },
     {
+      "path": "db/shaders.db0",
+      "asset_name": "db_shaders.db0",
+      "size": 935729,
+      "sha256": "f18413b82890ea43bc55ec50df2c6477d451c8dabfe09cc4b5c040f0ee8de669"
+    },
+    {
       "path": "db/shaders_anthology.xdb0",
       "asset_name": "db_shaders_anthology.xdb0",
       "size": 2577258,
@@ -182,7 +200,8 @@
       "path": "db/textures/textures_fix.xdb0",
       "asset_name": "db_textures_textures_fix.xdb0",
       "size": 47730726,
-      "sha256": "d8cce4a0d365936e634053f65a798e1ec4d25de6be6c74dbcb33447fffe1d83d"
+      "sha256": "d8cce4a0d365936e634053f65a798e1ec4d25de6be6c74dbcb33447fffe1d83d",
+      "url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.05.12/db_textures_textures_fix.xdb0"
     },
     {
       "path": "db/textures/textures_trees.xdb0",
@@ -206,7 +225,7 @@
       "url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.06.9/db_textures_textures_trees.xdb3"
     }
   ],
-  "notes": "add textures_fix.xdb0",
+  "notes": "Restore configs_anthology.xdb0 from local DB manifest.",
   "removed_files": [
     "db/mods/zhopa.xdb0",
     "db/textures/textures_actors_gnra.xdb1"
