@@ -229,5 +229,23 @@
     }
   ],
   "notes": "Обновление DB Anthology.",
-  "removed_files": []
+  "removed_files": [],
+  "game_packages": [
+    {
+      "id": "configs-ddf3d97851",
+      "name": "configs",
+      "version": "2026.07.07.1",
+      "notes": "Обновление файлов игры: configs.",
+      "url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/game-configs-ddf3d97851-2026.07.07.1/anthology-game-configs-ddf3d97851-2026.07.07.1.zip",
+      "asset_name": "anthology-game-configs-ddf3d97851-2026.07.07.1.zip",
+      "size": 93050,
+      "sha256": "60fa8e6bcc36c4c630d3d54005d11904c606a9fd58fc4ef4036f434c8bb8e132",
+      "files": [
+        "gamedata/configs/cache_dbg.ltx",
+        "gamedata/configs/crc_input.txt",
+        "gamedata/configs/crc_output.txt"
+      ],
+      "removed_files": []
+    }
+  ]
 }
