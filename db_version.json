@@ -1,7 +1,7 @@
 {
-  "version": "2026.07.07.2",
+  "version": "2026.07.08.5",
   "mode": "mirror",
-  "base_url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.07.07.2/",
+  "base_url": "https://github.com/Alex020104/anthology-db/releases/download/2026.07.08.5/",
   "files": [
     {
       "path": "db/configs/ai.db0",
