@@ -37,20 +37,42 @@ DEFAULT_WORKGIT_DIR = SCRIPT_DIR.parents[2]
 WORKGIT_DIR = configured_path("ANTHOLOGY_WORKGIT_DIR", DEFAULT_WORKGIT_DIR)
 LOCAL_CONFIG = read_release_local_config(WORKGIT_DIR)
 LOCAL_PATHS = LOCAL_CONFIG.get("paths", {}) if isinstance(LOCAL_CONFIG.get("paths", {}), dict) else {}
+MISSING_LOCAL_PATH = Path("__ANTHOLOGY_PATH_NOT_CONFIGURED__")
 
 
-def configured_local_path(key: str, env_name: str, default: str | Path) -> Path:
-    return Path(os.environ.get(env_name) or LOCAL_PATHS.get(key) or str(default))
+def local_path_error(key: str, env_name: str) -> RuntimeError:
+    return RuntimeError(
+        "Anthology release path is not configured: "
+        f"paths.{key}. Create release.local.json from release.local.example.json "
+        f"or set {env_name}."
+    )
+
+
+def configured_local_path(
+    key: str,
+    env_name: str,
+    default: str | Path | None = None,
+    *,
+    required: bool = False,
+) -> Path:
+    value = os.environ.get(env_name) or LOCAL_PATHS.get(key)
+    if value:
+        return Path(value)
+    if default is not None:
+        return Path(default)
+    if required:
+        raise local_path_error(key, env_name)
+    return MISSING_LOCAL_PATH
 
 
 HELPER = configured_local_path("release_helper", "ANTHOLOGY_RELEASE_HELPER", WORKGIT_DIR / "skills" / "anthology-release-ops" / "scripts" / "anthology_release_ops.py")
 LAUNCHER_DIR = configured_local_path("launcher_dir", "ANTHOLOGY_LAUNCHER_DIR", WORKGIT_DIR / "projects" / "AnthologyLauncher")
-MODPACK_DIR = configured_local_path("modpack_dir", "ANTHOLOGY_MODPACK_DIR", r"X:\S.T.A.L.K.E.R\A.N.T.H.O.L.O.G.Y\ANTHOLOGY\SYS_A.N.T.H.O.L.O.G.Y_mo2_CBT\mods")
+MODPACK_DIR = configured_local_path("modpack_dir", "ANTHOLOGY_MODPACK_DIR")
 ENGINE_DIR = configured_local_path("engine_dir", "ANTHOLOGY_ENGINE_DIR", WORKGIT_DIR / "projects" / "xray-monolith")
 ENGINE_BRANCH = "anthology-2026.5.8-mt-nanfix"
 ENGINE_REPO = "sysliveprime-ctrl/xray-monolith"
 ENGINE_BUILD_SCRIPT = configured_local_path("engine_build_script", "ANTHOLOGY_ENGINE_BUILD_SCRIPT", WORKGIT_DIR / "tools" / "build_anthology_engine.ps1")
-LIVE_GAME_DIR = configured_local_path("live_game_dir", "ANTHOLOGY_LIVE_GAME_DIR", r"X:\S.T.A.L.K.E.R\A.N.T.H.O.L.O.G.Y\ANTHOLOGY\Anomaly-1.5.3-Anthology 2.1")
+LIVE_GAME_DIR = configured_local_path("live_game_dir", "ANTHOLOGY_LIVE_GAME_DIR")
 LIVE_BIN_DIR = LIVE_GAME_DIR / "bin"
 LIVE_ENGINE_DB = LIVE_GAME_DIR / "db" / "mods" / "00_modded_exes_gamedata.db0"
 UPDATE_RULES_FILE = LAUNCHER_DIR / "assets" / "update_rules.json"
@@ -108,6 +130,16 @@ MAGENTA = f"{CSI}35m"
 
 class PublishError(RuntimeError):
     pass
+
+
+def require_configured_path(path: Path, key: str, env_name: str) -> Path:
+    if path == MISSING_LOCAL_PATH:
+        raise PublishError(
+            f"Local path is not configured: paths.{key}. "
+            "Copy release.local.example.json to release.local.json and set your own path, "
+            f"or set {env_name}."
+        )
+    return path
 
 
 class RussianArgumentParser(argparse.ArgumentParser):
@@ -555,6 +587,7 @@ def clean_temp_clone() -> Path:
 
 
 def publish_db(version: str, notes: str, yes: bool, dry_run: bool) -> None:
+    require_configured_path(LIVE_GAME_DIR, "live_game_dir", "ANTHOLOGY_LIVE_GAME_DIR")
     changes = summarize_db_changes(WORKGIT_DIR / "db_version.json")
     print_change_summary("Живые DB-файлы против текущего манифеста", changes)
     if not any(changes.values()):
@@ -586,6 +619,7 @@ def publish_db(version: str, notes: str, yes: bool, dry_run: bool) -> None:
 
 
 def publish_mo2(version: str, notes: str, yes: bool, dry_run: bool) -> None:
+    require_configured_path(MODPACK_DIR, "modpack_dir", "ANTHOLOGY_MODPACK_DIR")
     run(["git", "fetch", "origin", "main", "--prune"], cwd=MODPACK_DIR)
     summarize_mo2_changes()
     if not git_short_status(MODPACK_DIR):
@@ -746,6 +780,7 @@ def write_json(path: Path, data: dict) -> None:
 
 
 def publish_engine(version: str, notes: str, yes: bool, dry_run: bool, skip_build: bool) -> None:
+    require_configured_path(LIVE_GAME_DIR, "live_game_dir", "ANTHOLOGY_LIVE_GAME_DIR")
     require_engine_repo()
     run(["git", "fetch", "origin", ENGINE_BRANCH, "--prune"], cwd=ENGINE_DIR)
     branch = run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=ENGINE_DIR, capture=True).strip()

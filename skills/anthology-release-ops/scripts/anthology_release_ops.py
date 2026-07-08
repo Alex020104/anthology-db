@@ -36,16 +36,40 @@ DEFAULT_WORKGIT_DIR = SCRIPT_DIR.parents[2]
 WORKGIT_DIR = configured_path("ANTHOLOGY_WORKGIT_DIR", DEFAULT_WORKGIT_DIR)
 LOCAL_CONFIG = read_release_local_config(WORKGIT_DIR)
 LOCAL_PATHS = LOCAL_CONFIG.get("paths", {}) if isinstance(LOCAL_CONFIG.get("paths", {}), dict) else {}
+LOCAL_REPOS = LOCAL_CONFIG.get("repos", {}) if isinstance(LOCAL_CONFIG.get("repos", {}), dict) else {}
+MISSING_LOCAL_PATH = Path("__ANTHOLOGY_PATH_NOT_CONFIGURED__")
 
 
-def configured_local_path(key: str, env_name: str, default: str | Path) -> Path:
-    return Path(os.environ.get(env_name) or LOCAL_PATHS.get(key) or str(default))
+def local_path_error(key: str, env_name: str) -> RuntimeError:
+    return RuntimeError(
+        "Anthology release path is not configured: "
+        f"paths.{key}. Create release.local.json from release.local.example.json "
+        f"or set {env_name}."
+    )
+
+
+def configured_local_path(
+    key: str,
+    env_name: str,
+    default: str | Path | None = None,
+    *,
+    required: bool = False,
+) -> Path:
+    value = os.environ.get(env_name) or LOCAL_PATHS.get(key)
+    if value:
+        return Path(value)
+    if default is not None:
+        return Path(default)
+    if required:
+        raise local_path_error(key, env_name)
+    return MISSING_LOCAL_PATH
 
 
 LAUNCHER_DIR = configured_local_path("launcher_dir", "ANTHOLOGY_LAUNCHER_DIR", WORKGIT_DIR / "projects" / "AnthologyLauncher")
-MODPACK_DIR = configured_local_path("modpack_dir", "ANTHOLOGY_MODPACK_DIR", r"X:\S.T.A.L.K.E.R\A.N.T.H.O.L.O.G.Y\ANTHOLOGY\SYS_A.N.T.H.O.L.O.G.Y_mo2_CBT\mods")
+MODPACK_DIR = configured_local_path("modpack_dir", "ANTHOLOGY_MODPACK_DIR")
 SOURCE_DIR = configured_local_path("source_dir", "ANTHOLOGY_SOURCE_DIR", WORKGIT_DIR / "projects" / "anthology-source")
-LIVE_GAME_DIR = configured_local_path("live_game_dir", "ANTHOLOGY_LIVE_GAME_DIR", r"X:\S.T.A.L.K.E.R\A.N.T.H.O.L.O.G.Y\ANTHOLOGY\Anomaly-1.5.3-Anthology 2.1")
+LIVE_GAME_DIR = configured_local_path("live_game_dir", "ANTHOLOGY_LIVE_GAME_DIR")
+GAME_PAYLOAD_DIR = configured_local_path("game_payload_dir", "ANTHOLOGY_GAME_PAYLOAD_DIR", WORKGIT_DIR.parent / "anthology-game-files")
 DB_DIR = WORKGIT_DIR
 UPDATE_RULES_FILE = LAUNCHER_DIR / "assets" / "update_rules.json"
 
@@ -115,6 +139,7 @@ LAUNCHER_REPO = "sysliveprime-ctrl/AnthologyLauncher"
 MODPACK_REPO = "sysliveprime-ctrl/anthology-mo2-modpack"
 DB_REPO = "sysliveprime-ctrl/anthology-db"
 SOURCE_REPO = "sysliveprime-ctrl/anthology-source"
+GAME_PAYLOAD_REPO = os.environ.get("ANTHOLOGY_GAME_PAYLOAD_REPO") or LOCAL_REPOS.get("game_payload_repo") or "Alex020104/anthology-game-files"
 LAUNCHER_ASSET = "AnomalyLauncher.exe"
 LAUNCHER_RAW_ASSET = Path("release") / LAUNCHER_ASSET
 MODPACK_ALLOWED_PARTS = set(MO2_RULES.get("allowed_parts", ["configs", "scripts", "textures"]))
@@ -136,6 +161,16 @@ MODPACK_REMOVED_EXCLUDE_MARKERS = (
 
 class ReleaseError(RuntimeError):
     pass
+
+
+def require_configured_path(path: Path, key: str, env_name: str) -> Path:
+    if path == MISSING_LOCAL_PATH:
+        raise ReleaseError(
+            f"Local path is not configured: paths.{key}. "
+            "Copy release.local.example.json to release.local.json and set your own path, "
+            f"or set {env_name}."
+        )
+    return path
 
 
 def run(args: list[str | Path], cwd: Path | None = None, capture: bool = False) -> str:
@@ -248,6 +283,17 @@ def gh_request(method: str, url: str, token: str, data: bytes | None = None, con
     return json.loads(raw.decode("utf-8"))
 
 
+def assert_repo_write_access(repo: str, token: str) -> None:
+    info = gh_request("GET", f"https://api.github.com/repos/{repo}", token)
+    permissions = (info or {}).get("permissions", {})
+    if not any(bool(permissions.get(key)) for key in ("admin", "maintain", "push")):
+        raise ReleaseError(
+            f"GitHub token can read {repo}, but has no write access for Releases "
+            f"(permissions={permissions}). Sign in with the collaborator account or set "
+            "GITHUB_TOKEN/GH_TOKEN with repo write access."
+        )
+
+
 def latest_release(repo: str, token: str) -> dict:
     release = gh_request("GET", f"https://api.github.com/repos/{repo}/releases/latest", token)
     if not release:
@@ -265,6 +311,7 @@ def release_by_tag(repo: str, tag: str, token: str) -> dict | None:
 
 
 def create_release(repo: str, tag: str, token: str, notes: str) -> dict:
+    assert_repo_write_access(repo, token)
     payload = json.dumps(
         {"tag_name": tag, "name": tag, "body": notes, "draft": False, "prerelease": False}
     ).encode("utf-8")
@@ -700,7 +747,7 @@ def command_launcher_news_apply(args: argparse.Namespace) -> None:
 
 
 def command_modpack(args: argparse.Namespace) -> None:
-    root = Path(args.path or MODPACK_DIR)
+    root = Path(args.path) if args.path else require_configured_path(MODPACK_DIR, "modpack_dir", "ANTHOLOGY_MODPACK_DIR")
     version = args.version or default_version()
     notes = args.notes or "Modpack update."
     meta = root / "version.json"
@@ -725,7 +772,7 @@ def command_modpack(args: argparse.Namespace) -> None:
 
 
 def command_modpack_removed(args: argparse.Namespace) -> None:
-    root = Path(args.path or MODPACK_DIR)
+    root = Path(args.path) if args.path else require_configured_path(MODPACK_DIR, "modpack_dir", "ANTHOLOGY_MODPACK_DIR")
     files = deleted_modpack_files(root)
     print(json.dumps(
         {"type": "modpack-removed", "count": len(files), "removed_files": files},
@@ -738,6 +785,14 @@ def folder_package_id(folder: str) -> str:
     normalized = Path(folder).as_posix().strip("/")
     slug = re.sub(r"[^a-z0-9]+", "-", normalized.casefold()).strip("-")[:40] or "folder"
     digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:10]
+    return f"{slug}-{digest}"
+
+
+def game_package_id(name: str, rel_paths: list[str]) -> str:
+    normalized = name.strip() or "game-files"
+    slug = re.sub(r"[^a-z0-9]+", "-", normalized.casefold()).strip("-")[:40] or "game-files"
+    digest_source = "\n".join([normalized, *sorted(rel_paths, key=str.casefold)])
+    digest = hashlib.sha256(digest_source.encode("utf-8")).hexdigest()[:10]
     return f"{slug}-{digest}"
 
 
@@ -807,7 +862,70 @@ def folder_package_entries(data: dict) -> list[dict]:
     return list(raw)
 
 
-def ensure_folder_package_git_ready(root: Path, meta: Path, dry_run: bool) -> None:
+def game_package_entries(data: dict) -> list[dict]:
+    raw = data.get("game_packages", [])
+    if raw in (None, ""):
+        return []
+    if not isinstance(raw, list) or any(not isinstance(item, dict) for item in raw):
+        raise ReleaseError("version.json game_packages must be a list of objects.")
+    return list(raw)
+
+
+def game_source_relative_allowed(path: Path) -> bool:
+    parts = path.parts
+    if not parts or path.is_absolute() or any(part in {"", ".", ".."} for part in parts):
+        return False
+    blocked = {".git", ".github", ".vscode", "__pycache__", "webcache"}
+    return not any(part.casefold() in blocked for part in parts)
+
+
+def selected_game_sources(live_root: Path, values: list[str]) -> list[tuple[Path, str]]:
+    root_resolved = live_root.resolve()
+    files: dict[str, Path] = {}
+    for value in values:
+        selected = Path(value).expanduser().resolve()
+        try:
+            relative = selected.relative_to(root_resolved)
+        except ValueError as exc:
+            raise ReleaseError(f"Game package source must be inside the live game folder: {root_resolved}") from exc
+        candidates = [selected] if selected.is_file() else [path for path in selected.rglob("*") if path.is_file()]
+        for path in candidates:
+            rel = path.relative_to(root_resolved)
+            if not game_source_relative_allowed(rel):
+                continue
+            files[rel.as_posix()] = path
+    if not files:
+        raise ReleaseError("Selected game package sources contain no allowed files.")
+    return [(path, rel) for rel, path in sorted(files.items(), key=lambda item: item[0].casefold())]
+
+
+def build_game_package_zip(package_id: str, version: str, files: list[tuple[Path, str]]) -> tuple[Path, str]:
+    asset_name = f"anthology-game-{package_id}-{version}.zip"
+    output_dir = Path(tempfile.gettempdir()) / "anthology-game-packages"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    zip_path = output_dir / asset_name
+    zip_path.unlink(missing_ok=True)
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+        for source, relative in files:
+            archive.write(source, relative)
+    return zip_path, asset_name
+
+
+def version_json_has_only_toxic_removed_cleanup(root: Path, meta: Path) -> bool:
+    diff = run(["git", "diff", "--unified=0", "--", meta.name], cwd=root, capture=True)
+    changed = []
+    for line in diff.splitlines():
+        if line.startswith(("+++", "---", "@@")):
+            continue
+        if line.startswith(("+", "-")):
+            changed.append(line)
+    if not changed:
+        return True
+    toxic_marker = "[HARD] SYS radioactive_air_toxic_air_rework/"
+    return all(line.startswith("-") and toxic_marker in line for line in changed)
+
+
+def ensure_folder_package_git_ready(root: Path, meta: Path, dry_run: bool, *, allow_toxic_cleanup_meta: bool = False) -> None:
     branch = run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=root, capture=True).strip()
     if branch != "main":
         raise ReleaseError(f"Folder package publishing requires branch main, current branch: {branch}")
@@ -816,7 +934,10 @@ def ensure_folder_package_git_ready(root: Path, meta: Path, dry_run: bool) -> No
         raise ReleaseError("Unrelated staged changes exist. Commit or unstage them before folder package publishing.")
     meta_status = run(["git", "status", "--porcelain=v1", "--", meta.name], cwd=root, capture=True).strip()
     if meta_status:
-        raise ReleaseError(f"{meta.name} already has local changes; resolve them before publishing a folder package.")
+        if allow_toxic_cleanup_meta and version_json_has_only_toxic_removed_cleanup(root, meta):
+            print(f"{meta.name} has only toxic_air cleanup changes; keeping them with this manifest update.")
+        else:
+            raise ReleaseError(f"{meta.name} already has local changes; resolve them before publishing a folder package.")
     if dry_run:
         print("DRY RUN: skip remote synchronization gate")
         return
@@ -829,7 +950,7 @@ def ensure_folder_package_git_ready(root: Path, meta: Path, dry_run: bool) -> No
 
 
 def command_modpack_folder(args: argparse.Namespace) -> None:
-    root = Path(args.path or MODPACK_DIR)
+    root = Path(args.path) if args.path else require_configured_path(MODPACK_DIR, "modpack_dir", "ANTHOLOGY_MODPACK_DIR")
     meta = root / "version.json"
     version = validate_folder_package_version(args.version or default_version())
     notes = args.notes or "Отдельное обновление мода/фикса."
@@ -895,6 +1016,96 @@ def command_modpack_folder(args: argparse.Namespace) -> None:
             "folder": relative.as_posix(),
             "mode": mode,
             "commit": commit,
+            "asset": asset.get("name"),
+            "asset_size": asset.get("size"),
+            "file_count": len(current_paths),
+            "removed_files": len(removed_files),
+        },
+        ensure_ascii=False,
+        indent=2,
+    ))
+
+
+def command_game_package(args: argparse.Namespace) -> None:
+    root = Path(args.path) if args.path else require_configured_path(GAME_PAYLOAD_DIR, "game_payload_dir", "ANTHOLOGY_GAME_PAYLOAD_DIR")
+    source_root = root
+    meta = root / "version.json"
+    version = validate_folder_package_version(args.version or default_version())
+    files = selected_game_sources(source_root, args.source)
+    current_paths = [rel for _source, rel in files]
+    package_name = (args.name or Path(current_paths[0]).stem if len(current_paths) == 1 else args.name or "Game files").strip()
+    notes = args.notes or f"Обновление файлов игры: {package_name}."
+    package_id = game_package_id(package_name, current_paths)
+
+    data = read_json(meta) if meta.exists() else {}
+    data["version"] = version
+    data["notes"] = notes
+    entries = game_package_entries(data)
+    previous = next((item for item in entries if str(item.get("id", "")) == package_id), None)
+    if previous and str(previous.get("version", "")).strip() == version:
+        raise ReleaseError(f"Game package {package_name} already uses version {version}; choose a new version.")
+    previous_files = {
+        Path(str(item).replace("\\", "/")).as_posix()
+        for item in (previous or {}).get("files", [])
+        if isinstance(item, str)
+    }
+    removed_files = sorted(previous_files - set(current_paths), key=str.casefold)
+    zip_path, asset_name = build_game_package_zip(package_id, version, files)
+    digest = sha256_file(zip_path)
+    tag = f"game-{package_id}-{version}"
+    url = f"https://github.com/{GAME_PAYLOAD_REPO}/releases/download/{tag}/{asset_name}"
+    entry = {
+        "id": package_id,
+        "name": package_name,
+        "version": version,
+        "notes": notes,
+        "url": url,
+        "asset_name": asset_name,
+        "size": zip_path.stat().st_size,
+        "sha256": digest,
+        "files": current_paths,
+        "removed_files": removed_files,
+    }
+
+    branch = run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=root, capture=True).strip()
+    if branch != "main":
+        raise ReleaseError(f"Game package publishing requires game payload branch main, current branch: {branch}")
+    staged = run(["git", "diff", "--cached", "--name-only"], cwd=root, capture=True).strip()
+    if staged:
+        raise ReleaseError("Unrelated staged changes exist. Commit or unstage them before game package publishing.")
+    if not args.dry_run:
+        run(["git", "fetch", "origin", "main", "--prune"], cwd=root)
+        counts = run(["git", "rev-list", "--left-right", "--count", "HEAD...origin/main"], cwd=root, capture=True).strip().split()
+        if len(counts) != 2 or counts != ["0", "0"]:
+            ahead = counts[0] if counts else "?"
+            behind = counts[1] if len(counts) > 1 else "?"
+            raise ReleaseError(f"Local game payload main must match origin/main before publishing (ahead={ahead}, behind={behind}).")
+    if args.dry_run:
+        print(json.dumps({"type": "game-package", "dry_run": True, "package": entry, "zip": str(zip_path)}, ensure_ascii=False, indent=2))
+        return
+
+    token = github_token()
+    release = release_by_tag(GAME_PAYLOAD_REPO, tag, token) or create_release(GAME_PAYLOAD_REPO, tag, token, notes)
+    asset = upload_asset(release, zip_path, asset_name, token)
+
+    entries = [item for item in entries if str(item.get("id", "")) != package_id]
+    entries.append(entry)
+    entries.sort(key=lambda item: str(item.get("name", "")).casefold())
+    data["game_packages"] = entries
+    write_json(meta, data)
+    commit = commit_push_paths(
+        root,
+        [*(source for source, _rel in files), meta],
+        args.message or f"Publish game package {package_name} {version}",
+        False,
+    )
+    print(json.dumps(
+        {
+            "type": "game-package",
+            "version": version,
+            "name": package_name,
+            "commit": commit,
+            "repo": GAME_PAYLOAD_REPO,
             "asset": asset.get("name"),
             "asset_size": asset.get("size"),
             "file_count": len(current_paths),
@@ -995,6 +1206,7 @@ def unchanged_db_entry(current: dict, previous: dict | None) -> bool:
 
 
 def command_db(args: argparse.Namespace) -> None:
+    require_configured_path(LIVE_GAME_DIR, "live_game_dir", "ANTHOLOGY_LIVE_GAME_DIR")
     root = Path(args.path or DB_DIR)
     version = args.version or default_version()
     notes = args.notes or "Anthology Work Git update."
@@ -1134,6 +1346,12 @@ def build_parser() -> argparse.ArgumentParser:
     modpack_folder.add_argument("--folder", required=True, help="Top-level folder inside the MO2 mods repository")
     modpack_folder.add_argument("--mode", choices=["standard", "full"], default="standard", help="Package configs/scripts/textures only or the full folder")
     modpack_folder.set_defaults(func=command_modpack_folder)
+
+    game_package = sub.add_parser("game-package", help="Publish selected game-payload repo files as a separate launcher package")
+    add_common(game_package)
+    game_package.add_argument("--source", action="append", required=True, help="File or folder inside the game payload repository; can be repeated")
+    game_package.add_argument("--name", help="Human-readable package name")
+    game_package.set_defaults(func=command_game_package)
 
     source = sub.add_parser("source", help="Commit and push Anthology source update")
     add_common(source)

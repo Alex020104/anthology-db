@@ -34,18 +34,43 @@ DEFAULT_WORKGIT_DIR = SCRIPT_DIR.parents[2]
 WORKGIT_DIR = configured_path("ANTHOLOGY_WORKGIT_DIR", DEFAULT_WORKGIT_DIR)
 LOCAL_CONFIG = read_release_local_config(WORKGIT_DIR)
 LOCAL_PATHS = LOCAL_CONFIG.get("paths", {}) if isinstance(LOCAL_CONFIG.get("paths", {}), dict) else {}
+LOCAL_REPOS = LOCAL_CONFIG.get("repos", {}) if isinstance(LOCAL_CONFIG.get("repos", {}), dict) else {}
+MISSING_LOCAL_PATH = Path("__ANTHOLOGY_PATH_NOT_CONFIGURED__")
 
 
-def configured_local_path(key: str, env_name: str, default: str | Path) -> Path:
-    return Path(os.environ.get(env_name) or LOCAL_PATHS.get(key) or str(default))
+def local_path_error(key: str, env_name: str) -> RuntimeError:
+    return RuntimeError(
+        "Anthology release path is not configured: "
+        f"paths.{key}. Create release.local.json from release.local.example.json "
+        f"or set {env_name}."
+    )
+
+
+def configured_local_path(
+    key: str,
+    env_name: str,
+    default: str | Path | None = None,
+    *,
+    required: bool = False,
+) -> Path:
+    value = os.environ.get(env_name) or LOCAL_PATHS.get(key)
+    if value:
+        return Path(value)
+    if default is not None:
+        return Path(default)
+    if required:
+        raise local_path_error(key, env_name)
+    return MISSING_LOCAL_PATH
 
 
 HELPER = configured_local_path("release_helper", "ANTHOLOGY_RELEASE_HELPER", WORKGIT_DIR / "skills" / "anthology-release-ops" / "scripts" / "anthology_release_ops.py")
 LAUNCHER_DIR = configured_local_path("launcher_dir", "ANTHOLOGY_LAUNCHER_DIR", WORKGIT_DIR / "projects" / "AnthologyLauncher")
-MODPACK_DIR = configured_local_path("modpack_dir", "ANTHOLOGY_MODPACK_DIR", r"X:\S.T.A.L.K.E.R\A.N.T.H.O.L.O.G.Y\ANTHOLOGY\SYS_A.N.T.H.O.L.O.G.Y_mo2_CBT\mods")
+MODPACK_DIR = configured_local_path("modpack_dir", "ANTHOLOGY_MODPACK_DIR")
 ENGINE_DIR = configured_local_path("engine_dir", "ANTHOLOGY_ENGINE_DIR", WORKGIT_DIR / "projects" / "xray-monolith")
 UPDATE_RULES_FILE = LAUNCHER_DIR / "assets" / "update_rules.json"
-LIVE_GAME_DIR = configured_local_path("live_game_dir", "ANTHOLOGY_LIVE_GAME_DIR", r"X:\S.T.A.L.K.E.R\A.N.T.H.O.L.O.G.Y\ANTHOLOGY\Anomaly-1.5.3-Anthology 2.1")
+LIVE_GAME_DIR = configured_local_path("live_game_dir", "ANTHOLOGY_LIVE_GAME_DIR")
+GAME_PAYLOAD_DIR = configured_local_path("game_payload_dir", "ANTHOLOGY_GAME_PAYLOAD_DIR", WORKGIT_DIR.parent / "anthology-game-files")
+GAME_PAYLOAD_REPO = os.environ.get("ANTHOLOGY_GAME_PAYLOAD_REPO") or LOCAL_REPOS.get("game_payload_repo") or "Alex020104/anthology-game-files"
 DB_SOURCE_DIRS = {
     "configs": LIVE_GAME_DIR / "db" / "configs",
     "mods": LIVE_GAME_DIR / "db" / "mods",
@@ -712,6 +737,17 @@ class ReleaseControl(tk.Tk):
         ttk.Button(row, text="Добавить DB файл", command=self.add_db_file_rule).pack(side="left", padx=(0, 8))
         ttk.Button(row, text="Убрать DB файл", command=self.remove_db_file_rule).pack(side="left", padx=(0, 8))
 
+        game = ttk.Labelframe(tab, text="Файлы игры Anomaly-1.5.3-Anthology 2.1", padding=14)
+        game.pack(fill="x", pady=(0, 14))
+        ttk.Label(
+            game,
+            text=f"Публикует выбранные файлы/папку из game-payload repo через {GAME_PAYLOAD_REPO}/version.json. Нужен новый лаунчер с поддержкой game_packages.",
+            style="CardMuted.TLabel",
+        ).pack(anchor="w")
+        row = ttk.Frame(game)
+        row.pack(fill="x", pady=(12, 0))
+        ttk.Button(row, text="Опубликовать файлы игры", command=self.publish_game_package, style="Accent.TButton").pack(side="left", padx=(0, 8))
+
         db = ttk.Labelframe(tab, text="DB / Work Git", padding=14)
         db.pack(fill="x")
         ttk.Label(db, text="Сканирует live db/configs, db/mods и shaders_anthology.xdb0, затем грузит release assets.", style="CardMuted.TLabel").pack(anchor="w")
@@ -1327,6 +1363,63 @@ class ReleaseControl(tk.Tk):
             WORKGIT_DIR,
             title=f"Publish folder package {relative.as_posix()} {version}",
         )
+
+    def publish_game_package(self) -> None:
+        folder_mode = messagebox.askyesnocancel(
+            "Пакет файлов игры",
+            "Что выбрать для отдельного пакета игры?\n\n"
+            "Да — одну папку целиком.\n"
+            "Нет — один или несколько файлов.\n"
+            "Отмена — ничего не делать.",
+        )
+        if folder_mode is None:
+            return
+        if folder_mode:
+            selected_values = [filedialog.askdirectory(initialdir=str(GAME_PAYLOAD_DIR), title="Выбери папку внутри game-payload repo")]
+        else:
+            selected_values = list(filedialog.askopenfilenames(initialdir=str(GAME_PAYLOAD_DIR), title="Выбери один или несколько файлов внутри game-payload repo"))
+        selected_values = [value for value in selected_values if value]
+        if not selected_values:
+            return
+
+        rels: list[str] = []
+        for value in selected_values:
+            selected = Path(value).resolve()
+            try:
+                relative = selected.relative_to(GAME_PAYLOAD_DIR.resolve())
+            except ValueError:
+                messagebox.showerror("Файлы игры", f"Источник должен быть внутри game-payload repo:\n{GAME_PAYLOAD_DIR}\n\n{selected}")
+                return
+            rels.append(relative.as_posix())
+
+        default_name = Path(rels[0]).name if len(rels) == 1 else "Game files"
+        name = simpledialog.askstring("Название пакета", "Название пакета для version.json:", initialvalue=default_name, parent=self)
+        if not name:
+            return
+        version = self.ask_version("файлов игры")
+        if not version:
+            return
+        notes = self.ask_notes("Заметки пакета файлов игры", f"Обновление файлов игры: {name}.")
+        if notes is None:
+            return
+
+        sources_text = "\n".join(f"  {rel}" for rel in rels)
+        message = (
+            f"Опубликовать отдельный пакет файлов игры?\n\n"
+            f"Название: {name}\n"
+            f"Версия: {version}\n\n"
+            f"Источники внутри game-payload repo:\n{sources_text}\n\n"
+            f"Будет создан ZIP и запись game_packages в {GAME_PAYLOAD_REPO}/version.json. "
+            "Файлы установятся прямо в Anomaly-1.5.3-Anthology 2.1 у игроков.\n\n"
+            "Важно: игрокам сначала нужен лаунчер с поддержкой game_packages."
+        )
+        if not messagebox.askyesno("Подтверждение пакета файлов игры", message):
+            return
+
+        args = [sys.executable, str(HELPER), "game-package", "--name", name, "--version", version, "--notes", notes]
+        for value in selected_values:
+            args.extend(["--source", value])
+        self.run_command(args, WORKGIT_DIR, title=f"Publish game package {name} {version}")
 
     def publish_db(self) -> None:
         version = self.ask_version("DB")
