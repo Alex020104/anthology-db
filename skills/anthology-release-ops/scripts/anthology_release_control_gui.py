@@ -1800,7 +1800,7 @@ class ReleaseControl(tk.Tk):
 
     def check_launcher_public(self) -> None:
         script = (
-            "$m=Invoke-RestMethod -Uri ('https://raw.githubusercontent.com/sysliveprime-ctrl/AnthologyLauncher/main/launcher_version.json?t=' + ([DateTimeOffset]::Now).ToUnixTimeSeconds()); "
+            "$m=Invoke-RestMethod -Uri ('https://raw.githubusercontent.com/Alex020104/AnthologyLauncher/main/launcher_version.json?t=' + ([DateTimeOffset]::Now).ToUnixTimeSeconds()); "
             "$out=Join-Path $env:TEMP 'AnomalyLauncher_gui_check.exe'; "
             "Invoke-WebRequest -Uri $m.exe_url -OutFile $out -UseBasicParsing; "
             "$i=Get-Item $out; $h=(Get-FileHash -Algorithm SHA256 $out).Hash; "

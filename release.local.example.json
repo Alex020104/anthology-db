@@ -10,6 +10,9 @@
     "engine_build_script": "C:\\Path\\To\\Anthology-Work-Git\\tools\\build_anthology_engine.ps1"
   },
   "repos": {
+    "launcher_repo": "Alex020104/AnthologyLauncher",
+    "modpack_repo": "Alex020104/anthology-mo2-modpack",
+    "db_repo": "Alex020104/anthology-db",
     "game_payload_repo": "Alex020104/anthology-game-files"
   }
 }

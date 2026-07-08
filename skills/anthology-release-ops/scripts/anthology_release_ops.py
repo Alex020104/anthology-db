@@ -135,9 +135,9 @@ DB_REMOVED_REL_PATHS = {
     for path in DB_RULES.get("removed_files", [])
 }
 
-LAUNCHER_REPO = "sysliveprime-ctrl/AnthologyLauncher"
-MODPACK_REPO = "sysliveprime-ctrl/anthology-mo2-modpack"
-DB_REPO = "sysliveprime-ctrl/anthology-db"
+LAUNCHER_REPO = os.environ.get("ANTHOLOGY_LAUNCHER_REPO") or LOCAL_REPOS.get("launcher_repo") or "Alex020104/AnthologyLauncher"
+MODPACK_REPO = os.environ.get("ANTHOLOGY_MODPACK_REPO") or LOCAL_REPOS.get("modpack_repo") or "Alex020104/anthology-mo2-modpack"
+DB_REPO = os.environ.get("ANTHOLOGY_DB_REPO") or LOCAL_REPOS.get("db_repo") or "Alex020104/anthology-db"
 SOURCE_REPO = "sysliveprime-ctrl/anthology-source"
 GAME_PAYLOAD_REPO = os.environ.get("ANTHOLOGY_GAME_PAYLOAD_REPO") or LOCAL_REPOS.get("game_payload_repo") or "Alex020104/anthology-game-files"
 LAUNCHER_ASSET = "AnomalyLauncher.exe"
@@ -755,7 +755,7 @@ def command_modpack(args: argparse.Namespace) -> None:
     data = read_json(meta)
     data["version"] = version
     data["notes"] = notes
-    data.setdefault("zip_url", "https://github.com/sysliveprime-ctrl/anthology-mo2-modpack/archive/refs/heads/main.zip")
+    data.setdefault("zip_url", f"https://github.com/{MODPACK_REPO}/archive/refs/heads/main.zip")
     removed = deleted_modpack_files(root)
     if removed:
         data["removed_files"] = removed

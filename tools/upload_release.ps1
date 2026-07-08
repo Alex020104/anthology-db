@@ -3,7 +3,7 @@ param(
     [string]$Version,
 
     [string]$ReleaseDir = "",
-    [string]$Repo = "sysliveprime-ctrl/anthology-db"
+    [string]$Repo = "Alex020104/anthology-db"
 )
 
 $ErrorActionPreference = "Stop"

@@ -108,10 +108,10 @@ def db_source_file_for(rel: str, configured_value: str | Path | None = None) -> 
         return Path(configured_value)
     return LIVE_GAME_DIR / rel
 
-DB_REPO_URL = "https://github.com/sysliveprime-ctrl/anthology-db.git"
-DB_MANIFEST_API = "https://api.github.com/repos/sysliveprime-ctrl/anthology-db/contents/db_version.json?ref=main"
-LAUNCHER_MANIFEST_API = "https://api.github.com/repos/sysliveprime-ctrl/AnthologyLauncher/contents/launcher_version.json?ref=main"
-MO2_MANIFEST_API = "https://api.github.com/repos/sysliveprime-ctrl/anthology-mo2-modpack/contents/version.json?ref=main"
+DB_REPO_URL = "https://github.com/Alex020104/anthology-db.git"
+DB_MANIFEST_API = "https://api.github.com/repos/Alex020104/anthology-db/contents/db_version.json?ref=main"
+LAUNCHER_MANIFEST_API = "https://api.github.com/repos/Alex020104/AnthologyLauncher/contents/launcher_version.json?ref=main"
+MO2_MANIFEST_API = "https://api.github.com/repos/Alex020104/anthology-mo2-modpack/contents/version.json?ref=main"
 ENGINE_MANIFEST_API = (
     "https://api.github.com/repos/sysliveprime-ctrl/xray-monolith/contents/"
     "engine_version.json?ref=anthology-2026.5.8-mt-nanfix"
@@ -467,7 +467,7 @@ def git_short_status(root: Path) -> str:
 def git_user_config(source_root: Path) -> tuple[str, str]:
     name = run(["git", "config", "user.name"], cwd=source_root, capture=True).strip()
     email = run(["git", "config", "user.email"], cwd=source_root, capture=True).strip()
-    return name or "sysliveprime-ctrl", email or "sysliveprime-ctrl@users.noreply.github.com"
+    return name or "Alex020104", email or "Alex020104@users.noreply.github.com"
 
 
 def db_asset_name(rel_path: str) -> str:

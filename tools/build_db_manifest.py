@@ -12,7 +12,7 @@ ALLOWED_DIRS = {"configs", "mods"}
 ROOT_FILES = {
     "shaders_anthology.xdb0",
 }
-DEFAULT_RELEASE_BASE = "https://github.com/sysliveprime-ctrl/anthology-db/releases/download"
+DEFAULT_RELEASE_BASE = "https://github.com/Alex020104/anthology-db/releases/download"
 EXCLUDED_REL_PATHS = {
     "db/mods/00_modded_exes_gamedata.db0",
 }
