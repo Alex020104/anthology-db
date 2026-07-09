@@ -66,7 +66,7 @@ def configured_local_path(
 HELPER = configured_local_path("release_helper", "ANTHOLOGY_RELEASE_HELPER", WORKGIT_DIR / "skills" / "anthology-release-ops" / "scripts" / "anthology_release_ops.py")
 LAUNCHER_DIR = configured_local_path("launcher_dir", "ANTHOLOGY_LAUNCHER_DIR", WORKGIT_DIR / "projects" / "AnthologyLauncher")
 MODPACK_DIR = configured_local_path("modpack_dir", "ANTHOLOGY_MODPACK_DIR")
-ENGINE_DIR = configured_local_path("engine_dir", "ANTHOLOGY_ENGINE_DIR", WORKGIT_DIR / "projects" / "xray-monolith")
+ENGINE_DIR = configured_local_path("engine_dir", "ANTHOLOGY_ENGINE_DIR", WORKGIT_DIR.parent / "anthology-mt-engine")
 UPDATE_RULES_FILE = LAUNCHER_DIR / "assets" / "update_rules.json"
 LIVE_GAME_DIR = configured_local_path("live_game_dir", "ANTHOLOGY_LIVE_GAME_DIR")
 GAME_PAYLOAD_DIR = configured_local_path("game_payload_dir", "ANTHOLOGY_GAME_PAYLOAD_DIR", WORKGIT_DIR.parent / "anthology-game-files")

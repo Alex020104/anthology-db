@@ -37,6 +37,7 @@ DEFAULT_WORKGIT_DIR = SCRIPT_DIR.parents[2]
 WORKGIT_DIR = configured_path("ANTHOLOGY_WORKGIT_DIR", DEFAULT_WORKGIT_DIR)
 LOCAL_CONFIG = read_release_local_config(WORKGIT_DIR)
 LOCAL_PATHS = LOCAL_CONFIG.get("paths", {}) if isinstance(LOCAL_CONFIG.get("paths", {}), dict) else {}
+LOCAL_REPOS = LOCAL_CONFIG.get("repos", {}) if isinstance(LOCAL_CONFIG.get("repos", {}), dict) else {}
 MISSING_LOCAL_PATH = Path("__ANTHOLOGY_PATH_NOT_CONFIGURED__")
 
 
@@ -68,9 +69,9 @@ def configured_local_path(
 HELPER = configured_local_path("release_helper", "ANTHOLOGY_RELEASE_HELPER", WORKGIT_DIR / "skills" / "anthology-release-ops" / "scripts" / "anthology_release_ops.py")
 LAUNCHER_DIR = configured_local_path("launcher_dir", "ANTHOLOGY_LAUNCHER_DIR", WORKGIT_DIR / "projects" / "AnthologyLauncher")
 MODPACK_DIR = configured_local_path("modpack_dir", "ANTHOLOGY_MODPACK_DIR")
-ENGINE_DIR = configured_local_path("engine_dir", "ANTHOLOGY_ENGINE_DIR", WORKGIT_DIR / "projects" / "xray-monolith")
-ENGINE_BRANCH = "anthology-2026.5.8-mt-nanfix"
-ENGINE_REPO = "Alex020104/anthology-mt-engine"
+ENGINE_DIR = configured_local_path("engine_dir", "ANTHOLOGY_ENGINE_DIR", WORKGIT_DIR.parent / "anthology-mt-engine")
+ENGINE_BRANCH = os.environ.get("ANTHOLOGY_ENGINE_BRANCH") or LOCAL_PATHS.get("engine_branch") or "main"
+ENGINE_REPO = os.environ.get("ANTHOLOGY_ENGINE_REPO") or LOCAL_REPOS.get("engine_repo") or "Alex020104/anthology-mt-engine"
 ENGINE_BUILD_SCRIPT = configured_local_path("engine_build_script", "ANTHOLOGY_ENGINE_BUILD_SCRIPT", WORKGIT_DIR / "tools" / "build_anthology_engine.ps1")
 LIVE_GAME_DIR = configured_local_path("live_game_dir", "ANTHOLOGY_LIVE_GAME_DIR")
 LIVE_BIN_DIR = LIVE_GAME_DIR / "bin"
@@ -112,10 +113,7 @@ DB_REPO_URL = "https://github.com/Alex020104/anthology-db.git"
 DB_MANIFEST_API = "https://api.github.com/repos/Alex020104/anthology-db/contents/db_version.json?ref=main"
 LAUNCHER_MANIFEST_API = "https://api.github.com/repos/Alex020104/AnthologyLauncher/contents/launcher_version.json?ref=main"
 MO2_MANIFEST_API = "https://api.github.com/repos/Alex020104/anthology-mo2-modpack/contents/version.json?ref=main"
-ENGINE_MANIFEST_API = (
-    "https://api.github.com/repos/Alex020104/anthology-mt-engine/contents/"
-    "engine_version.json?ref=anthology-2026.5.8-mt-nanfix"
-)
+ENGINE_MANIFEST_API = f"https://api.github.com/repos/{ENGINE_REPO}/contents/engine_version.json?ref={quote(ENGINE_BRANCH, safe='')}"
 
 CSI = "\033["
 RESET = f"{CSI}0m"
