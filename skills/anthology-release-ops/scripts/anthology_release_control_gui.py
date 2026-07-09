@@ -647,11 +647,22 @@ class ReleaseControl(tk.Tk):
         self.version_vars = {
             "launcher": tk.StringVar(value="Лаунчер: ..."),
             "mo2": tk.StringVar(value="MO2: ..."),
+            "game": tk.StringVar(value="Game: ..."),
             "db": tk.StringVar(value="DB: ..."),
             "engine": tk.StringVar(value="MT: ..."),
         }
         for var in self.version_vars.values():
             ttk.Label(version_box, textvariable=var, style="Version.TLabel").pack(side="left", padx=(0, 10))
+
+        sync_box = ttk.Frame(self, padding=(18, 0, 18, 12))
+        sync_box.pack(fill="x")
+        ttk.Label(sync_box, text="Синхронизация перед работой:", style="Muted.TLabel").pack(side="left", padx=(0, 10))
+        ttk.Button(sync_box, text="DB", command=lambda: self.sync_repo("DB / Work Git", WORKGIT_DIR)).pack(side="left", padx=(0, 8))
+        ttk.Button(sync_box, text="MO2", command=lambda: self.sync_repo("MO2 модпак", MODPACK_DIR)).pack(side="left", padx=(0, 8))
+        ttk.Button(sync_box, text="Game / Relay", command=lambda: self.sync_repo("Файлы игры / Relay Chat", GAME_PAYLOAD_DIR)).pack(side="left", padx=(0, 8))
+        ttk.Button(sync_box, text="Launcher", command=lambda: self.sync_repo("Лаунчер", LAUNCHER_DIR)).pack(side="left", padx=(0, 8))
+        ttk.Button(sync_box, text="MT", command=lambda: self.sync_repo("MT engine", ENGINE_DIR)).pack(side="left", padx=(0, 8))
+        ttk.Button(sync_box, text="Синхронизировать всё", command=self.sync_all_repos, style="Accent.TButton").pack(side="left")
 
         paned = ttk.PanedWindow(self, orient="vertical")
         paned.pack(fill="both", expand=True, padx=18, pady=(0, 16))
@@ -996,6 +1007,7 @@ class ReleaseControl(tk.Tk):
             for key, path, label in (
                 ("launcher", LAUNCHER_DIR / "launcher_version.json", "Лаунчер"),
                 ("mo2", MODPACK_DIR / "version.json", "MO2"),
+                ("game", GAME_PAYLOAD_DIR / "version.json", "Game"),
                 ("db", WORKGIT_DIR / "db_version.json", "DB"),
                 ("engine", ENGINE_DIR / "engine_version.json", "MT"),
             ):
@@ -1150,8 +1162,68 @@ class ReleaseControl(tk.Tk):
         self.run_command(["git", "status", "--short", "--branch"], root, title=f"git status: {root}")
 
     def all_git_statuses(self) -> None:
-        for root in (WORKGIT_DIR, LAUNCHER_DIR, MODPACK_DIR, ENGINE_DIR):
-            self.run_git_status(root)
+        commands: list[tuple[str, list[str], Path]] = []
+        for label, root in self.sync_targets():
+            if self.is_git_repo_path(root):
+                commands.append((f"{label}: status", ["git", "status", "--short", "--branch"], root))
+        if not commands:
+            messagebox.showerror("Git-статусы", "Не найдено ни одного git-репозитория.")
+            return
+        self.run_command_sequence(commands, title="Все git-статусы")
+
+    def sync_targets(self) -> list[tuple[str, Path]]:
+        return [
+            ("DB / Work Git", WORKGIT_DIR),
+            ("MO2 модпак", MODPACK_DIR),
+            ("Файлы игры / Relay Chat", GAME_PAYLOAD_DIR),
+            ("Лаунчер", LAUNCHER_DIR),
+            ("MT engine", ENGINE_DIR),
+        ]
+
+    def is_git_repo_path(self, root: Path) -> bool:
+        return root != MISSING_LOCAL_PATH and root.exists() and (root / ".git").exists()
+
+    def current_git_branch(self, root: Path) -> str:
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=str(root),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        branch = (result.stdout or "").strip()
+        if result.returncode == 0 and branch and branch != "HEAD":
+            return branch
+        return "main"
+
+    def sync_repo_commands(self, label: str, root: Path) -> list[tuple[str, list[str], Path]]:
+        branch = self.current_git_branch(root)
+        return [
+            (f"{label}: fetch", ["git", "fetch", "origin", branch, "--prune"], root),
+            (f"{label}: pull", ["git", "pull", "--ff-only", "origin", branch], root),
+            (f"{label}: status", ["git", "status", "--short", "--branch"], root),
+        ]
+
+    def sync_repo(self, label: str, root: Path) -> None:
+        if not self.is_git_repo_path(root):
+            messagebox.showerror("Синхронизация", f"Не найден git-репозиторий для {label}:\n{root}")
+            return
+        self.run_command_sequence(self.sync_repo_commands(label, root), title=f"Синхронизация: {label}")
+
+    def sync_all_repos(self) -> None:
+        commands: list[tuple[str, list[str], Path]] = []
+        skipped: list[str] = []
+        for label, root in self.sync_targets():
+            if self.is_git_repo_path(root):
+                commands.extend(self.sync_repo_commands(label, root))
+            else:
+                skipped.append(f"{label}: {root}")
+        if skipped:
+            self._log("Пропущены не настроенные репозитории:\n" + "\n".join(skipped))
+        if not commands:
+            messagebox.showerror("Синхронизация", "Не найдено ни одного git-репозитория для синхронизации.")
+            return
+        self.run_command_sequence(commands, title="Синхронизация всех репозиториев")
 
     def show_update_rules(self) -> None:
         self._log(json.dumps(read_update_rules(), ensure_ascii=False, indent=2))
@@ -1869,6 +1941,58 @@ class ReleaseControl(tk.Tk):
     def capture(self, args: list[str], cwd: Path) -> str:
         result = subprocess.run(args, cwd=str(cwd), text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         return result.stdout.strip()
+
+    def run_command_sequence(self, commands: list[tuple[str, list[str], Path]], on_success=None, title: str | None = None) -> None:
+        if self.running:
+            messagebox.showwarning("Задача выполняется", "Дождись завершения текущей операции.")
+            return
+        self.running = True
+        self.command_output = []
+        self.command_status.set(f"Статус: выполняется - {title or 'команды'}")
+        self.command_progress.start(12)
+        self._log("\n" + "=" * 80)
+        self._log(title or "Команды")
+
+        def work() -> None:
+            try:
+                env = os.environ.copy()
+                env["PYTHONUNBUFFERED"] = "1"
+                env["PYTHONUTF8"] = "1"
+                for step_title, args, cwd in commands:
+                    self.queue.put(("log", f"\n[{step_title}] {cwd}"))
+                    self.queue.put(("log", "+ " + " ".join(args)))
+                    process = subprocess.Popen(
+                        args,
+                        cwd=str(cwd),
+                        text=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        bufsize=1,
+                        env=env,
+                    )
+                    assert process.stdout is not None
+                    for line in process.stdout:
+                        self.command_output.append(line)
+                        text = line.rstrip()
+                        if text:
+                            self.queue.put(("log", text))
+                    returncode = process.wait()
+                    if returncode != 0:
+                        output = "".join(self.command_output)
+                        tail = "\n".join(output.strip().splitlines()[-18:])
+                        detail = f"Команда завершилась с кодом {returncode}: {' '.join(args)}"
+                        if tail:
+                            detail += "\n\nПоследний вывод:\n" + tail
+                        self.queue.put(("error", detail))
+                        return
+                self.queue.put(("done", "OK"))
+                if on_success:
+                    self.queue.put(("callback", on_success))
+                    self.queue.put(("callback_arg", "".join(self.command_output)))
+            except Exception as exc:
+                self.queue.put(("error", str(exc)))
+
+        threading.Thread(target=work, daemon=True).start()
 
     def run_command(self, args: list[str], cwd: Path, on_success=None, title: str | None = None) -> None:
         if self.running:
