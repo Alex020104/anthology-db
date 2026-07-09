@@ -52,12 +52,12 @@ Players do not need Git. Git is only our publishing transport.
   `AnomalyLauncher.exe` from latest GitHub Release.
 - Modpack update reads `version.json` through the GitHub contents API first
   because raw GitHub CDN can lag; raw URL is only fallback. It then downloads
-  `sysliveprime-ctrl/anthology-mo2-modpack` `main.zip`.
+  `Alex020104/anthology-mo2-modpack` `main.zip`.
 - DB update reads `db_version.json` through the GitHub contents API first
   because raw GitHub CDN can lag; raw URL is only fallback.
 - DB files download from GitHub Release assets by `base_url + asset_name`.
 - Engine update reads `engine_version.json` through the GitHub contents API first
-  from `sysliveprime-ctrl/xray-monolith` branch
+  from `Alex020104/anthology-mt-engine` branch
   `anthology-2026.5.8-mt-nanfix`; raw URL is only fallback. It then downloads
   the ZIP from the URL in that manifest.
 - `anthology-source` is never used by the launcher.
@@ -126,7 +126,7 @@ Does:
 - auto-fills `removed_files` with deleted tracked `gamedata/configs`,
   `gamedata/scripts`, and `gamedata/textures` files that are absent from current Git
 - commits tracked modpack changes
-- pushes `sysliveprime-ctrl/anthology-mo2-modpack` `main`
+- pushes `Alex020104/anthology-mo2-modpack` `main`
 
 The launcher installs from `main.zip`; no release asset is needed.
 
@@ -166,7 +166,7 @@ Engine release channel:
 ```text
 repo:   E:\dev\Anthology-Work-Git\projects\xray-monolith
 branch: anthology-2026.5.8-mt-nanfix
-public: sysliveprime-ctrl/xray-monolith
+public: Alex020104/anthology-mt-engine
 manifest: engine_version.json
 release asset: STALKER-Anomaly-modded-exes-MT-TEST_<tag>.zip
 ```
@@ -221,7 +221,7 @@ Does:
 - scans live game DB source folders, not copied repo folders
 - writes logical paths `db/configs/...`, `db/mods/...`, and
   `db/shaders_anthology.xdb0` to `db_version.json`
-- commits and pushes `sysliveprime-ctrl/anthology-db` `main`
+- commits and pushes `Alex020104/anthology-db` `main`
 - creates/updates GitHub Release tag equal to the version
 - uploads DB assets from the live game DB folders
 
@@ -247,7 +247,7 @@ py -3 E:\dev\Anthology-Work-Git\skills\anthology-release-ops\scripts\anthology_r
 ```
 
 Commits and pushes `E:\dev\Anthology-Work-Git\projects\anthology-source` to
-`sysliveprime-ctrl/anthology-source`. This is maintainer-only and not part of
+`Alex020104/anthology-source`. This is maintainer-only and not part of
 launcher updates.
 
 ## Safety Checklist

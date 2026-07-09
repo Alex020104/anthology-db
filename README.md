@@ -11,7 +11,7 @@
 Лаунчер читает:
 
 ```text
-https://github.com/sysliveprime-ctrl/anthology-db/blob/main/db_version.json
+https://github.com/Alex020104/anthology-db/blob/main/db_version.json
 ```
 
 Затем он:
@@ -32,7 +32,7 @@ Git игрокам не нужен.
 {
   "version": "2026.05.25.3",
   "mode": "mirror",
-  "base_url": "https://github.com/sysliveprime-ctrl/anthology-db/releases/download/2026.05.25.3/",
+  "base_url": "https://github.com/Alex020104/anthology-db/releases/download/2026.05.25.3/",
   "files": [
     {
       "path": "db/configs/configs_anthology.xdb0",
@@ -86,11 +86,11 @@ source repo:    F:\Editor_Stalker\Anthology-Work-Git\projects\anthology-source
 
 Публичные репозитории:
 
-- `sysliveprime-ctrl/AnthologyLauncher`
-- `sysliveprime-ctrl/anthology-mo2-modpack`
-- `sysliveprime-ctrl/anthology-db`
-- `sysliveprime-ctrl/xray-monolith`
-- `sysliveprime-ctrl/anthology-source`
+- `Alex020104/AnthologyLauncher`
+- `Alex020104/anthology-mo2-modpack`
+- `Alex020104/anthology-db`
+- `Alex020104/anthology-mt-engine`
+- `Alex020104/anthology-source`
 
 `anthology-source` хранит source snapshot для сопровождения и ревью. Лаунчер
 его не скачивает и не использует как update channel.

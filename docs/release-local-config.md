@@ -13,7 +13,7 @@ notepad .\release.local.json
 
 Required local paths:
 
-- `modpack_dir` — local clone/working tree of `sysliveprime-ctrl/anthology-mo2-modpack`, usually the MO2 `mods` folder.
+- `modpack_dir` — local clone/working tree of `Alex020104/anthology-mo2-modpack`, usually the MO2 `mods` folder.
 - `live_game_dir` — local game folder that contains `db`, `bin`, and the live Anthology files used for DB/engine releases.
 
 Optional local paths:

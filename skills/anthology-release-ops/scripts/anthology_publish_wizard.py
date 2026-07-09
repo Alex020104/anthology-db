@@ -70,7 +70,7 @@ LAUNCHER_DIR = configured_local_path("launcher_dir", "ANTHOLOGY_LAUNCHER_DIR", W
 MODPACK_DIR = configured_local_path("modpack_dir", "ANTHOLOGY_MODPACK_DIR")
 ENGINE_DIR = configured_local_path("engine_dir", "ANTHOLOGY_ENGINE_DIR", WORKGIT_DIR / "projects" / "xray-monolith")
 ENGINE_BRANCH = "anthology-2026.5.8-mt-nanfix"
-ENGINE_REPO = "sysliveprime-ctrl/xray-monolith"
+ENGINE_REPO = "Alex020104/anthology-mt-engine"
 ENGINE_BUILD_SCRIPT = configured_local_path("engine_build_script", "ANTHOLOGY_ENGINE_BUILD_SCRIPT", WORKGIT_DIR / "tools" / "build_anthology_engine.ps1")
 LIVE_GAME_DIR = configured_local_path("live_game_dir", "ANTHOLOGY_LIVE_GAME_DIR")
 LIVE_BIN_DIR = LIVE_GAME_DIR / "bin"
@@ -113,7 +113,7 @@ DB_MANIFEST_API = "https://api.github.com/repos/Alex020104/anthology-db/contents
 LAUNCHER_MANIFEST_API = "https://api.github.com/repos/Alex020104/AnthologyLauncher/contents/launcher_version.json?ref=main"
 MO2_MANIFEST_API = "https://api.github.com/repos/Alex020104/anthology-mo2-modpack/contents/version.json?ref=main"
 ENGINE_MANIFEST_API = (
-    "https://api.github.com/repos/sysliveprime-ctrl/xray-monolith/contents/"
+    "https://api.github.com/repos/Alex020104/anthology-mt-engine/contents/"
     "engine_version.json?ref=anthology-2026.5.8-mt-nanfix"
 )
 
@@ -189,7 +189,7 @@ def require_engine_repo() -> None:
     if not (ENGINE_DIR / ".git").exists() or not (ENGINE_DIR / "engine_version.json").exists():
         raise PublishError(
             f"MT engine repo is not configured: {ENGINE_DIR}. "
-            "Set ANTHOLOGY_ENGINE_DIR or clone sysliveprime-ctrl/xray-monolith before using engine actions."
+            "Set ANTHOLOGY_ENGINE_DIR or clone Alex020104/anthology-mt-engine before using engine actions."
         )
 
 
