@@ -755,7 +755,8 @@ def command_modpack(args: argparse.Namespace) -> None:
     data = read_json(meta)
     data["version"] = version
     data["notes"] = notes
-    data.setdefault("zip_url", f"https://github.com/{MODPACK_REPO}/archive/refs/heads/main.zip")
+    data["zip_url"] = f"https://github.com/{MODPACK_REPO}/archive/refs/heads/main.zip"
+    data.pop("folder_packages", None)
     removed = deleted_modpack_files(root)
     if removed:
         data["removed_files"] = removed
@@ -1183,16 +1184,7 @@ def db_asset_name(rel_path: str) -> str:
 
 
 def db_entry_asset_url(manifest: dict, entry: dict, target_version: str) -> str:
-    explicit = str(entry.get("url", "")).strip()
-    if explicit:
-        return explicit
-    if str(manifest.get("version", "")).strip() == target_version:
-        return ""
-    base_url = str(manifest.get("base_url", "")).strip()
-    asset_name = str(entry.get("asset_name") or db_asset_name(entry["path"])).strip()
-    if not base_url:
-        return ""
-    return base_url.rstrip("/") + "/" + quote(asset_name.replace("\\", "/"), safe="/")
+    return ""
 
 
 def unchanged_db_entry(current: dict, previous: dict | None) -> bool:
@@ -1248,6 +1240,7 @@ def command_db(args: argparse.Namespace) -> None:
         {str(path).replace("\\", "/") for path in DB_RULES.get("removed_files", [])},
         key=str.casefold,
     )
+    data.pop("game_packages", None)
     if args.dry_run:
         print(f"DRY RUN: skip writing {meta}")
     else:
