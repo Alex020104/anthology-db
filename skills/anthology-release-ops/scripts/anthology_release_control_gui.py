@@ -1189,10 +1189,10 @@ class ReleaseControl(tk.Tk):
     def sync_targets(self) -> list[tuple[str, Path]]:
         return [
             ("DB / Work Git", WORKGIT_DIR),
-            ("MO2 модпак", MODPACK_DIR),
-            ("Файлы игры / Relay Chat", GAME_PAYLOAD_DIR),
             ("Лаунчер", LAUNCHER_DIR),
+            ("Файлы игры / Relay Chat", GAME_PAYLOAD_DIR),
             ("MT engine", ENGINE_DIR),
+            ("MO2 модпак", MODPACK_DIR),
         ]
 
     def is_git_repo_path(self, root: Path) -> bool:
@@ -1254,7 +1254,7 @@ class ReleaseControl(tk.Tk):
         if not commands:
             messagebox.showerror("Синхронизация", "Не найдено ни одного git-репозитория для синхронизации.")
             return
-        self.run_command_sequence(commands, title="Синхронизация всех репозиториев")
+        self.run_command_sequence(commands, title="Синхронизация всех репозиториев", continue_on_error=True)
 
     def show_update_rules(self) -> None:
         self._log(json.dumps(read_update_rules(), ensure_ascii=False, indent=2))
@@ -1981,7 +1981,14 @@ class ReleaseControl(tk.Tk):
         )
         return result.stdout.strip()
 
-    def run_command_sequence(self, commands: list[tuple[str, list[str], Path]], on_success=None, title: str | None = None) -> None:
+    def run_command_sequence(
+        self,
+        commands: list[tuple[str, list[str], Path]],
+        on_success=None,
+        title: str | None = None,
+        *,
+        continue_on_error: bool = False,
+    ) -> None:
         if self.running:
             messagebox.showwarning("Задача выполняется", "Дождись завершения текущей операции.")
             return
@@ -1997,6 +2004,7 @@ class ReleaseControl(tk.Tk):
                 env = os.environ.copy()
                 env["PYTHONUNBUFFERED"] = "1"
                 env["PYTHONUTF8"] = "1"
+                failures: list[str] = []
                 for step_title, args, cwd in commands:
                     self.queue.put(("log", f"\n[{step_title}] {cwd}"))
                     self.queue.put(("log", "+ " + " ".join(args)))
@@ -2024,8 +2032,15 @@ class ReleaseControl(tk.Tk):
                         detail = f"Команда завершилась с кодом {returncode}: {' '.join(args)}"
                         if tail:
                             detail += "\n\nПоследний вывод:\n" + tail
+                        if continue_on_error:
+                            failures.append(f"{step_title}: {detail}")
+                            self.queue.put(("log", "ОШИБКА: " + detail))
+                            continue
                         self.queue.put(("error", detail))
                         return
+                if failures:
+                    self.queue.put(("error", "Часть синхронизации не выполнена, остальные репозитории обработаны.\n\n" + "\n\n".join(failures)))
+                    return
                 self.queue.put(("done", "OK"))
                 if on_success:
                     self.queue.put(("callback", on_success))
