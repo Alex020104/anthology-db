@@ -1,7 +1,7 @@
 {
-  "version": "2026.07.09.2",
+  "version": "2026.07.10.1",
   "mode": "mirror",
-  "base_url": "https://github.com/Alex020104/anthology-db/releases/download/2026.07.09.2/",
+  "base_url": "https://github.com/Alex020104/anthology-db/releases/download/2026.07.10.1/",
   "files": [
     {
       "path": "db/configs/ai.db0",
@@ -66,8 +66,8 @@
     {
       "path": "db/mods/[ANT] Mod Configuration Menu.xdb0",
       "asset_name": "db_mods_ANT_Mod_Configuration_Menu.xdb0",
-      "size": 111187,
-      "sha256": "6bd89d3e280acde32227f3f067b18c17f142e7ee36dea7180bfdf85c3d8784b4"
+      "size": 118061,
+      "sha256": "bb58f05b00127453e2a22b109225580024e3ca922b6f4104552599cb80543049"
     },
     {
       "path": "db/mods/[ANT] Sota ui for Anthology.xdb0",
@@ -196,6 +196,6 @@
       "sha256": "ee9ff717d5413e5b7ae8459a4d3e6724c3257429ede110206bf8f07416cf669a"
     }
   ],
-  "notes": "Обновление DB Anthology. Все DB-файлы перенесены на Alex020104, старые syslive game packages отключены.",
+  "notes": "Обновление DB Anthology.",
   "removed_files": []
 }
