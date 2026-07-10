@@ -1,7 +1,7 @@
 {
-  "version": "2026.07.10.1",
+  "version": "2026.07.10.10",
   "mode": "mirror",
-  "base_url": "https://github.com/Alex020104/anthology-db/releases/download/2026.07.10.1/",
+  "base_url": "https://github.com/Alex020104/anthology-db/releases/download/2026.07.10.10/",
   "files": [
     {
       "path": "db/configs/ai.db0",
@@ -116,6 +116,12 @@
       "asset_name": "db_mods_Inventory_Antifreeze.xdb0",
       "size": 336297,
       "sha256": "51befd21d71235bfbcd43261329e19524e9110ed86e752297216c3fcdf74bf4f"
+    },
+    {
+      "path": "db/mods/Job_to_Done_COFG.xdb0",
+      "asset_name": "db_mods_Job_to_Done_COFG.xdb0",
+      "size": 6820689,
+      "sha256": "0e877ec31105c215968f9d7d8a944642788da0ee95c331cb8c8e71460363cc78"
     },
     {
       "path": "db/mods/monolith_prisoners.xdb0",
