@@ -24,11 +24,20 @@ def configured_path(env_name: str, default: str | Path) -> Path:
     return Path(os.environ.get(env_name, str(default)))
 
 
+def read_text_fallback(path: Path) -> str:
+    raw = path.read_bytes()
+    for encoding in ("utf-8-sig", "utf-16", "cp1251", "cp866"):
+        try:
+            return raw.decode(encoding)
+        except UnicodeDecodeError:
+            pass
+    return raw.decode("utf-8", errors="replace")
+
 def read_release_local_config(workgit_dir: Path) -> dict:
     path = Path(os.environ.get("ANTHOLOGY_RELEASE_LOCAL_CONFIG", workgit_dir / "release.local.json"))
     if not path.exists():
         return {}
-    return json.loads(path.read_text(encoding="utf-8-sig"))
+    return json.loads(read_text_fallback(path))
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -77,7 +86,7 @@ UPDATE_RULES_FILE = LAUNCHER_DIR / "assets" / "update_rules.json"
 def read_update_rules() -> dict:
     if not UPDATE_RULES_FILE.exists():
         return {}
-    return json.loads(UPDATE_RULES_FILE.read_text(encoding="utf-8-sig"))
+    return json.loads(read_text_fallback(UPDATE_RULES_FILE))
 
 
 UPDATE_RULES = read_update_rules()
@@ -179,6 +188,8 @@ def run(args: list[str | Path], cwd: Path | None = None, capture: bool = False) 
         [str(arg) for arg in args],
         cwd=str(cwd) if cwd else None,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         stdout=subprocess.PIPE if capture else None,
         stderr=subprocess.STDOUT if capture else None,
     )
@@ -232,7 +243,7 @@ def commit_push_paths(root: Path, paths: list[Path], message: str, dry_run: bool
 
 
 def read_json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8-sig"))
+    return json.loads(read_text_fallback(path))
 
 
 def write_json(path: Path, data: dict) -> None:
@@ -252,6 +263,8 @@ def github_token() -> str:
         ["git", "credential", "fill"],
         input="protocol=https\nhost=github.com\n\n",
         text=True,
+        encoding="utf-8",
+        errors="replace",
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
@@ -375,7 +388,7 @@ def update_launcher_version(root: Path, version: str, notes: str) -> None:
     script = root / "anthology_launcher.py"
     meta = root / "launcher_version.json"
 
-    text = script.read_text(encoding="utf-8")
+    text = read_text_fallback(script)
     new_text, count = re.subn(r'LAUNCHER_VERSION = "[^"]+"', f'LAUNCHER_VERSION = "{version}"', text, count=1)
     if count != 1:
         raise ReleaseError("Could not find LAUNCHER_VERSION in anthology_launcher.py")
@@ -428,7 +441,7 @@ def update_launcher_news(
     max_items: int = 7,
 ) -> None:
     script = root / "anthology_launcher.py"
-    text = script.read_text(encoding="utf-8")
+    text = read_text_fallback(script)
     replacements = {
         "ru": (ru_title, ru_body),
         "en": (en_title or ru_title, en_body or ru_body),
@@ -448,7 +461,7 @@ def update_launcher_news(
 
 def launcher_news_entries(root: Path, lang: str = "ru") -> list[tuple[str, str]]:
     script = root / "anthology_launcher.py"
-    text = script.read_text(encoding="utf-8")
+    text = read_text_fallback(script)
     pattern = launcher_news_pattern(lang)
     match = pattern.search(text)
     if not match:
@@ -465,7 +478,7 @@ def edit_launcher_news(
     en_body: str | None = None,
 ) -> None:
     script = root / "anthology_launcher.py"
-    text = script.read_text(encoding="utf-8")
+    text = read_text_fallback(script)
     replacements = {
         "ru": (ru_title, ru_body),
         "en": (en_title or ru_title, en_body or ru_body),
@@ -485,7 +498,7 @@ def edit_launcher_news(
 
 def delete_launcher_news(root: Path, index: int) -> None:
     script = root / "anthology_launcher.py"
-    text = script.read_text(encoding="utf-8")
+    text = read_text_fallback(script)
     for lang in ("ru", "en"):
         pattern = launcher_news_pattern(lang)
         match = pattern.search(text)
@@ -506,7 +519,7 @@ def replace_launcher_news(root: Path, ru_entries: list[tuple[str, str]], en_entr
         raise ReleaseError(f"RU/EN news count mismatch: {len(ru_entries)} != {len(en_entries)}.")
 
     script = root / "anthology_launcher.py"
-    text = script.read_text(encoding="utf-8")
+    text = read_text_fallback(script)
     replacements = {"ru": ru_entries, "en": en_entries}
     for lang, entries in replacements.items():
         pattern = launcher_news_pattern(lang)
@@ -716,7 +729,7 @@ def command_launcher_news_apply(args: argparse.Namespace) -> None:
     if args.news_json:
         payload = json.loads(args.news_json)
     elif args.news_file:
-        payload = json.loads(Path(args.news_file).read_text(encoding="utf-8-sig"))
+        payload = json.loads(read_text_fallback(Path(args.news_file)))
     else:
         raise ReleaseError("launcher-news-apply requires --news-json or --news-file.")
 

@@ -22,11 +22,20 @@ def configured_path(env_name: str, default: str | Path) -> Path:
     return Path(os.environ.get(env_name, str(default)))
 
 
+def read_text_fallback(path: Path) -> str:
+    raw = path.read_bytes()
+    for encoding in ("utf-8-sig", "utf-16", "cp1251", "cp866"):
+        try:
+            return raw.decode(encoding)
+        except UnicodeDecodeError:
+            pass
+    return raw.decode("utf-8", errors="replace")
+
 def read_release_local_config(workgit_dir: Path) -> dict:
     path = Path(os.environ.get("ANTHOLOGY_RELEASE_LOCAL_CONFIG", workgit_dir / "release.local.json"))
     if not path.exists():
         return {}
-    return json.loads(path.read_text(encoding="utf-8-sig"))
+    return json.loads(read_text_fallback(path))
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -89,7 +98,7 @@ DB_EXCLUDED_REL_PATHS = {
 def read_update_rules() -> dict:
     if not UPDATE_RULES_FILE.exists():
         return {"mo2": {"allowed_parts": ["configs", "scripts", "textures"], "managed_full_folders": []}, "db": {"source_dirs": {}, "source_files": {}, "excluded_rel_paths": []}}
-    return json.loads(UPDATE_RULES_FILE.read_text(encoding="utf-8-sig"))
+    return json.loads(read_text_fallback(UPDATE_RULES_FILE))
 
 
 def write_update_rules(data: dict) -> None:
@@ -140,7 +149,7 @@ def db_rel_from_source(path: Path) -> str:
 
 def ensure_full_folder_gitignore(folder: str) -> None:
     gitignore = MODPACK_DIR / ".gitignore"
-    text = gitignore.read_text(encoding="utf-8-sig") if gitignore.exists() else ""
+    text = read_text_fallback(gitignore) if gitignore.exists() else ""
     escaped = "".join(f"\\{char}" if char in "[]" else char for char in folder)
     line = f"!{escaped}/**"
     if line not in text.splitlines():
@@ -149,7 +158,7 @@ def ensure_full_folder_gitignore(folder: str) -> None:
 
 def ensure_standard_folder_gitignore(folder: str) -> None:
     gitignore = MODPACK_DIR / ".gitignore"
-    text = gitignore.read_text(encoding="utf-8-sig") if gitignore.exists() else ""
+    text = read_text_fallback(gitignore) if gitignore.exists() else ""
     escaped = "".join(f"\\{char}" if char in "[]" else char for char in folder)
     lines = [
         f"!{escaped}/",
@@ -185,7 +194,7 @@ COLORS = {
 
 
 def read_json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8-sig"))
+    return json.loads(read_text_fallback(path))
 
 
 def sha256_file(path: Path) -> str:
@@ -1012,7 +1021,7 @@ class ReleaseControl(tk.Tk):
                 ("engine", ENGINE_DIR / "engine_version.json", "MT"),
             ):
                 try:
-                    data = json.loads(path.read_text(encoding="utf-8-sig"))
+                    data = json.loads(read_text_fallback(path))
                     self.queue.put(("version", f"{key}|{label}: {data.get('version', '?')}"))
                 except FileNotFoundError:
                     fallback = "not configured" if key == "engine" else "missing"
@@ -1044,6 +1053,8 @@ class ReleaseControl(tk.Tk):
                     [sys.executable, str(HELPER), "launcher-news-list", "--lang", "ru"],
                     cwd=str(WORKGIT_DIR),
                     text=True,
+                    encoding="utf-8",
+                    errors="replace",
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                 )
@@ -1051,6 +1062,8 @@ class ReleaseControl(tk.Tk):
                     [sys.executable, str(HELPER), "launcher-news-list", "--lang", "en"],
                     cwd=str(WORKGIT_DIR),
                     text=True,
+                    encoding="utf-8",
+                    errors="replace",
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                 )
@@ -1075,6 +1088,8 @@ class ReleaseControl(tk.Tk):
                     [sys.executable, str(HELPER), "launcher-news-list", "--lang", "en"],
                     cwd=str(WORKGIT_DIR),
                     text=True,
+                    encoding="utf-8",
+                    errors="replace",
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                 ).stdout
@@ -1188,6 +1203,8 @@ class ReleaseControl(tk.Tk):
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],
             cwd=str(root),
             text=True,
+            encoding="utf-8",
+            errors="replace",
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
         )
@@ -1939,7 +1956,15 @@ class ReleaseControl(tk.Tk):
         return messagebox.askyesno("Подтверждение публикации MO2", message)
 
     def capture(self, args: list[str], cwd: Path) -> str:
-        result = subprocess.run(args, cwd=str(cwd), text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        result = subprocess.run(
+            args,
+            cwd=str(cwd),
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
         return result.stdout.strip()
 
     def run_command_sequence(self, commands: list[tuple[str, list[str], Path]], on_success=None, title: str | None = None) -> None:
@@ -1965,6 +1990,8 @@ class ReleaseControl(tk.Tk):
                         args,
                         cwd=str(cwd),
                         text=True,
+                        encoding="utf-8",
+                        errors="replace",
                         stdout=subprocess.PIPE,
                         stderr=subprocess.STDOUT,
                         bufsize=1,
@@ -2015,6 +2042,8 @@ class ReleaseControl(tk.Tk):
                     args,
                     cwd=str(cwd),
                     text=True,
+                    encoding="utf-8",
+                    errors="replace",
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     bufsize=1,
