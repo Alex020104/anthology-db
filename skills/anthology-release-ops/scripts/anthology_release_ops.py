@@ -33,6 +33,25 @@ def read_text_fallback(path: Path) -> str:
             pass
     return raw.decode("utf-8", errors="replace")
 
+def preferred_newline(path: Path) -> str:
+    try:
+        raw = path.read_bytes()
+    except OSError:
+        return "\n"
+    return "\r\n" if b"\r\n" in raw else "\n"
+
+
+def normalize_newlines(text: str) -> str:
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def write_text_preserve_newlines(path: Path, text: str) -> None:
+    newline = preferred_newline(path)
+    normalized = normalize_newlines(text)
+    if newline != "\n":
+        normalized = normalized.replace("\n", newline)
+    path.write_bytes(normalized.encode("utf-8"))
+
 def read_release_local_config(workgit_dir: Path) -> dict:
     path = Path(os.environ.get("ANTHOLOGY_RELEASE_LOCAL_CONFIG", workgit_dir / "release.local.json"))
     if not path.exists():
@@ -247,7 +266,7 @@ def read_json(path: Path) -> dict:
 
 
 def write_json(path: Path, data: dict) -> None:
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_text_preserve_newlines(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
 
 
 def default_version() -> str:
@@ -392,7 +411,7 @@ def update_launcher_version(root: Path, version: str, notes: str) -> None:
     new_text, count = re.subn(r'LAUNCHER_VERSION = "[^"]+"', f'LAUNCHER_VERSION = "{version}"', text, count=1)
     if count != 1:
         raise ReleaseError("Could not find LAUNCHER_VERSION in anthology_launcher.py")
-    script.write_text(new_text, encoding="utf-8")
+    write_text_preserve_newlines(script, new_text)
 
     data = read_json(meta)
     data["version"] = version
@@ -458,7 +477,7 @@ def update_launcher_news(
         entries = entries[:max_items]
         text = text[:match.start("entries")] + render_launcher_news_entries(entries) + text[match.end("entries"):]
 
-    script.write_text(text, encoding="utf-8")
+    write_text_preserve_newlines(script, text)
 
 
 def launcher_news_entries(root: Path, lang: str = "ru") -> list[tuple[str, str]]:
@@ -495,7 +514,7 @@ def edit_launcher_news(
             raise ReleaseError(f"News index {index} is out of range for {lang}; found {len(entries)} items.")
         entries[index - 1] = entry
         text = text[:match.start("entries")] + render_launcher_news_entries(entries) + text[match.end("entries"):]
-    script.write_text(text, encoding="utf-8")
+    write_text_preserve_newlines(script, text)
 
 
 def delete_launcher_news(root: Path, index: int) -> None:
@@ -511,7 +530,7 @@ def delete_launcher_news(root: Path, index: int) -> None:
             raise ReleaseError(f"News index {index} is out of range for {lang}; found {len(entries)} items.")
         del entries[index - 1]
         text = text[:match.start("entries")] + render_launcher_news_entries(entries) + text[match.end("entries"):]
-    script.write_text(text, encoding="utf-8")
+    write_text_preserve_newlines(script, text)
 
 
 def replace_launcher_news(root: Path, ru_entries: list[tuple[str, str]], en_entries: list[tuple[str, str]]) -> None:
@@ -529,7 +548,7 @@ def replace_launcher_news(root: Path, ru_entries: list[tuple[str, str]], en_entr
         if not match:
             raise ReleaseError(f"Could not find launcher news block for {lang}.")
         text = text[:match.start("entries")] + render_launcher_news_entries(entries) + text[match.end("entries"):]
-    script.write_text(text, encoding="utf-8")
+    write_text_preserve_newlines(script, text)
 
 
 def is_modpack_update_path(path: str) -> bool:
@@ -624,10 +643,32 @@ def deleted_modpack_files(root: Path) -> list[str]:
     return sorted(deleted, key=str.casefold)
 
 
+def require_launcher_build_tools(args: argparse.Namespace, root: Path) -> None:
+    if getattr(args, "skip_build", False) or getattr(args, "_launcher_build_tools_checked", False):
+        return
+    print("+ py -3 -m PyInstaller --version")
+    result = subprocess.run(
+        ["py", "-3", "-m", "PyInstaller", "--version"],
+        cwd=str(root),
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    if result.returncode != 0:
+        output = (result.stdout or "").strip()
+        message = "PyInstaller is not installed for py -3. Install it with: py -3 -m pip install --upgrade pyinstaller"
+        if output:
+            message = f"{message}\n{output}"
+        raise ReleaseError(message)
+    setattr(args, "_launcher_build_tools_checked", True)
+
 def command_launcher(args: argparse.Namespace) -> None:
     root = Path(args.path or LAUNCHER_DIR)
     version = args.version or default_version()
     notes = args.notes or "Launcher update."
+    require_launcher_build_tools(args, root)
     update_launcher_version(root, version, notes)
 
     run(["py", "-3", "-m", "py_compile", root / "anthology_launcher.py"], cwd=root)
@@ -670,6 +711,7 @@ def command_launcher_news(args: argparse.Namespace) -> None:
     if not title or not body:
         raise ReleaseError("launcher-news requires --news-title and --news-body.")
 
+    require_launcher_build_tools(args, root)
     update_launcher_news(
         root,
         title,
@@ -707,6 +749,7 @@ def command_launcher_news_edit(args: argparse.Namespace) -> None:
     body = (args.news_body or "").strip()
     if not title or not body:
         raise ReleaseError("launcher-news-edit requires --news-title and --news-body.")
+    require_launcher_build_tools(args, root)
     edit_launcher_news(
         root,
         args.index,
@@ -721,6 +764,7 @@ def command_launcher_news_edit(args: argparse.Namespace) -> None:
 
 def command_launcher_news_delete(args: argparse.Namespace) -> None:
     root = Path(args.path or LAUNCHER_DIR)
+    require_launcher_build_tools(args, root)
     delete_launcher_news(root, args.index)
     args.notes = args.notes or f"Delete launcher news #{args.index}"
     command_launcher(args)
@@ -756,6 +800,7 @@ def command_launcher_news_apply(args: argparse.Namespace) -> None:
     if args.max_news:
         ru_entries = ru_entries[:args.max_news]
         en_entries = en_entries[:args.max_news]
+    require_launcher_build_tools(args, root)
     replace_launcher_news(root, ru_entries, en_entries)
     args.notes = args.notes or f"Apply launcher news list ({len(ru_entries)} items)"
     command_launcher(args)
