@@ -227,6 +227,35 @@ def short_status(root: Path) -> str:
     return run(["git", "status", "--short"], cwd=root, capture=True).strip()
 
 
+def current_branch(root: Path) -> str:
+    branch = run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=root, capture=True).strip()
+    return branch if branch and branch != "HEAD" else "main"
+
+
+def push_with_rebase(root: Path) -> None:
+    branch = current_branch(root)
+    result = subprocess.run(
+        ["git", "push", "origin", branch],
+        cwd=str(root),
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    if result.returncode == 0:
+        if result.stdout:
+            print(result.stdout.rstrip())
+        return
+
+    output = result.stdout or ""
+    print(output.rstrip())
+    print(f"Push was rejected or failed. Trying safe rebase on origin/{branch} and one more push.")
+    run(["git", "fetch", "origin", branch, "--prune"], cwd=root)
+    run(["git", "rebase", f"origin/{branch}"], cwd=root)
+    run(["git", "push", "origin", branch], cwd=root)
+
+
 def commit_push(root: Path, message: str, dry_run: bool) -> str:
     print(status(root))
     if dry_run:
@@ -238,7 +267,7 @@ def commit_push(root: Path, message: str, dry_run: bool) -> str:
         run(["git", "commit", "-m", message], cwd=root)
     else:
         print("No git changes to commit.")
-    run(["git", "push", "origin", "main"], cwd=root)
+    push_with_rebase(root)
     return run(["git", "rev-parse", "--short", "HEAD"], cwd=root, capture=True).strip()
 
 
@@ -257,7 +286,7 @@ def commit_push_paths(root: Path, paths: list[Path], message: str, dry_run: bool
             print("No staged git changes to commit.")
     else:
         print("No git changes to commit.")
-    run(["git", "push", "origin", "main"], cwd=root)
+    push_with_rebase(root)
     return run(["git", "rev-parse", "--short", "HEAD"], cwd=root, capture=True).strip()
 
 

@@ -1230,14 +1230,8 @@ class ReleaseControl(tk.Tk):
     def sync_repo_commands(self, label: str, root: Path) -> list[tuple[str, list[str], Path]]:
         branch = self.current_git_branch(root)
         commands = [(f"{label}: fetch", ["git", "fetch", "origin", branch, "--prune"], root)]
-        dirty_count = self.git_dirty_count(root)
-        if dirty_count != 0:
-            reason = "unknown git status error" if dirty_count < 0 else f"{dirty_count} local changes"
-            self._log(f"{label}: pull skipped ({reason}). Commit or stash local changes before pulling.")
-            commands.append((f"{label}: status (pull skipped)", ["git", "status", "--short", "--branch"], root))
-            return commands
         commands.extend([
-            (f"{label}: pull", ["git", "pull", "--ff-only", "origin", branch], root),
+            (f"{label}: pull/rebase", ["git", "pull", "--rebase", "--autostash", "origin", branch], root),
             (f"{label}: status", ["git", "status", "--short", "--branch"], root),
         ])
         return commands
