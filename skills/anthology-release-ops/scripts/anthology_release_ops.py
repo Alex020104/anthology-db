@@ -67,9 +67,9 @@ def configured_local_path(
 
 LAUNCHER_DIR = configured_local_path("launcher_dir", "ANTHOLOGY_LAUNCHER_DIR", WORKGIT_DIR / "projects" / "AnthologyLauncher")
 MODPACK_DIR = configured_local_path("modpack_dir", "ANTHOLOGY_MODPACK_DIR")
-SOURCE_DIR = configured_local_path("source_dir", "ANTHOLOGY_SOURCE_DIR", WORKGIT_DIR / "projects" / "anthology-source")
 LIVE_GAME_DIR = configured_local_path("live_game_dir", "ANTHOLOGY_LIVE_GAME_DIR")
-GAME_PAYLOAD_DIR = configured_local_path("game_payload_dir", "ANTHOLOGY_GAME_PAYLOAD_DIR", WORKGIT_DIR.parent / "anthology-game-files")
+GAME_PAYLOAD_DIR = configured_local_path("game_payload_dir", "ANTHOLOGY_GAME_PAYLOAD_DIR", WORKGIT_DIR / "projects" / "anthology-game-files")
+SOURCE_DIR = configured_local_path("source_dir", "ANTHOLOGY_SOURCE_DIR", GAME_PAYLOAD_DIR)
 DB_DIR = WORKGIT_DIR
 UPDATE_RULES_FILE = LAUNCHER_DIR / "assets" / "update_rules.json"
 
@@ -138,8 +138,8 @@ DB_REMOVED_REL_PATHS = {
 LAUNCHER_REPO = os.environ.get("ANTHOLOGY_LAUNCHER_REPO") or LOCAL_REPOS.get("launcher_repo") or "Alex020104/AnthologyLauncher"
 MODPACK_REPO = os.environ.get("ANTHOLOGY_MODPACK_REPO") or LOCAL_REPOS.get("modpack_repo") or "Alex020104/anthology-mo2-modpack"
 DB_REPO = os.environ.get("ANTHOLOGY_DB_REPO") or LOCAL_REPOS.get("db_repo") or "Alex020104/anthology-db"
-SOURCE_REPO = "Alex020104/anthology-source"
 GAME_PAYLOAD_REPO = os.environ.get("ANTHOLOGY_GAME_PAYLOAD_REPO") or LOCAL_REPOS.get("game_payload_repo") or "Alex020104/anthology-game-files"
+SOURCE_REPO = os.environ.get("ANTHOLOGY_SOURCE_REPO") or LOCAL_REPOS.get("source_repo") or GAME_PAYLOAD_REPO
 LAUNCHER_ASSET = "AnomalyLauncher.exe"
 LAUNCHER_RAW_ASSET = Path("release") / LAUNCHER_ASSET
 MODPACK_ALLOWED_PARTS = set(MO2_RULES.get("allowed_parts", ["configs", "scripts", "textures"]))

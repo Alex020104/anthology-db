@@ -1,6 +1,6 @@
 ---
 name: anthology-release-ops
-description: Automate Anthology release operations from E:\dev\Anthology-Work-Git for launcher, MO2 modpack, DB/WorkGit, and source snapshot. Use for short commands like launcher updated, fake launcher update, modpack updated, workgit/db updated, source updated, upload latest AnomalyLauncher.exe, or publish Anthology release assets.
+description: Automate Anthology release operations from F:\Editor_Stalker\Anthology-Work-Git for launcher, MO2 modpack, DB/WorkGit, and game-files payloads. Use for short commands like launcher updated, fake launcher update, modpack updated, workgit/db updated, game-files/source updated, upload latest AnomalyLauncher.exe, or publish Anthology release assets.
 ---
 
 # Anthology Release Ops
@@ -8,7 +8,7 @@ description: Automate Anthology release operations from E:\dev\Anthology-Work-Gi
 This skill's source of truth is this repository:
 
 ```text
-E:\dev\Anthology-Work-Git\skills\anthology-release-ops
+F:\Editor_Stalker\Anthology-Work-Git\skills\anthology-release-ops
 ```
 
 Do not maintain release logic in `%USERPROFILE%\.codex\skills`. That folder may
@@ -17,12 +17,12 @@ only contain a tiny discovery pointer to this repo copy.
 ## Roots
 
 ```text
-release workspace: E:\dev\Anthology-Work-Git
-launcher repo:      E:\dev\Anthology-Work-Git\projects\AnthologyLauncher
+release workspace: F:\Editor_Stalker\Anthology-Work-Git
+launcher repo:      F:\Editor_Stalker\Anthology-Work-Git\projects\AnthologyLauncher
 modpack repo:       D:\ANTHOLOGY\SYS_A.N.T.H.O.L.O.G.Y_mo2_CBT\mods
-source repo:        E:\dev\Anthology-Work-Git\projects\anthology-source
-engine repo:        E:\dev\Anthology-Work-Git\projects\xray-monolith
-DB manifest repo:   E:\dev\Anthology-Work-Git
+game files repo:        F:\Editor_Stalker\Anthology-Work-Git\projects\anthology-game-files
+engine repo:        F:\Editor_Stalker\Anthology-Work-Git\projects\anthology-mt-engine
+DB manifest repo:   F:\Editor_Stalker\Anthology-Work-Git
 DB asset sources:   D:\ANTHOLOGY\Anomaly-1.5.3-Anthology 2.1\db\configs
                     D:\ANTHOLOGY\Anomaly-1.5.3-Anthology 2.1\db\mods
                     D:\ANTHOLOGY\Anomaly-1.5.3-Anthology 2.1\db\shaders_anthology.xdb0
@@ -34,7 +34,7 @@ DB asset sources:   D:\ANTHOLOGY\Anomaly-1.5.3-Anthology 2.1\db\configs
 Primary helper:
 
 ```powershell
-py -3 E:\dev\Anthology-Work-Git\skills\anthology-release-ops\scripts\anthology_release_ops.py <command> [args]
+py -3 F:\Editor_Stalker\Anthology-Work-Git\skills\anthology-release-ops\scripts\anthology_release_ops.py <command> [args]
 ```
 
 ## Intent Mapping
@@ -60,7 +60,7 @@ Players do not need Git. Git is only our publishing transport.
   from `Alex020104/anthology-mt-engine` branch
   `anthology-2026.5.8-mt-nanfix`; raw URL is only fallback. It then downloads
   the ZIP from the URL in that manifest.
-- `anthology-source` is never used by the launcher.
+- `anthology-game-files` is never used by the launcher.
 
 ## Current Update Semantics
 
@@ -86,7 +86,7 @@ Players do not need Git. Git is only our publishing transport.
 ## Launcher
 
 ```powershell
-py -3 E:\dev\Anthology-Work-Git\skills\anthology-release-ops\scripts\anthology_release_ops.py launcher --version YYYY.MM.DD.N --notes "..."
+py -3 F:\Editor_Stalker\Anthology-Work-Git\skills\anthology-release-ops\scripts\anthology_release_ops.py launcher --version YYYY.MM.DD.N --notes "..."
 ```
 
 Does:
@@ -103,7 +103,7 @@ Never copy the built exe to the local game folder unless explicitly asked.
 Launcher top news can be published through the wizard:
 
 ```powershell
-py -3 E:\dev\Anthology-Work-Git\skills\anthology-release-ops\scripts\anthology_publish_wizard.py
+py -3 F:\Editor_Stalker\Anthology-Work-Git\skills\anthology-release-ops\scripts\anthology_publish_wizard.py
 ```
 
 Choose `Launcher news`; it inserts the entered news item at the top of the
@@ -111,13 +111,13 @@ launcher news feed, bumps the launcher version, builds `AnomalyLauncher.exe`,
 pushes `main`, and replaces the latest Release asset. CLI equivalent:
 
 ```powershell
-py -3 E:\dev\Anthology-Work-Git\skills\anthology-release-ops\scripts\anthology_release_ops.py launcher-news --version YYYY.MM.DD.N --news-title "..." --news-body "..."
+py -3 F:\Editor_Stalker\Anthology-Work-Git\skills\anthology-release-ops\scripts\anthology_release_ops.py launcher-news --version YYYY.MM.DD.N --news-title "..." --news-body "..."
 ```
 
 ## Modpack
 
 ```powershell
-py -3 E:\dev\Anthology-Work-Git\skills\anthology-release-ops\scripts\anthology_release_ops.py modpack --version YYYY.MM.DD.N --notes "..."
+py -3 F:\Editor_Stalker\Anthology-Work-Git\skills\anthology-release-ops\scripts\anthology_release_ops.py modpack --version YYYY.MM.DD.N --notes "..."
 ```
 
 Does:
@@ -153,7 +153,7 @@ py -3 skills/anthology-release-ops/scripts/anthology_release_ops.py modpack-fold
 Preview cleanup list without publishing:
 
 ```powershell
-py -3 E:\dev\Anthology-Work-Git\skills\anthology-release-ops\scripts\anthology_release_ops.py modpack-removed
+py -3 F:\Editor_Stalker\Anthology-Work-Git\skills\anthology-release-ops\scripts\anthology_release_ops.py modpack-removed
 ```
 
 Before publishing, inspect `git status --short --branch`. R.A.K paths should not
@@ -164,7 +164,7 @@ be tracked. Test files named `anthology_release_*` must not be present.
 Engine release channel:
 
 ```text
-repo:   E:\dev\Anthology-Work-Git\projects\xray-monolith
+repo:   F:\Editor_Stalker\Anthology-Work-Git\projects\anthology-mt-engine
 branch: anthology-2026.5.8-mt-nanfix
 public: Alex020104/anthology-mt-engine
 manifest: engine_version.json
@@ -185,7 +185,7 @@ Rules:
 - Build/deploy the engine with:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File E:\dev\Anthology-Work-Git\tools\build_anthology_engine.ps1 -Deploy
+powershell -ExecutionPolicy Bypass -File F:\Editor_Stalker\Anthology-Work-Git\tools\build_anthology_engine.ps1 -Deploy
 ```
 
 - The build deploys DX11 and DX11-AVX exe/PDB to:
@@ -213,7 +213,7 @@ D:\ANTHOLOGY\Anomaly-1.5.3-Anthology 2.1\bin
 ## WorkGit / DB
 
 ```powershell
-py -3 E:\dev\Anthology-Work-Git\skills\anthology-release-ops\scripts\anthology_release_ops.py workgit --version YYYY.MM.DD.N --notes "..."
+py -3 F:\Editor_Stalker\Anthology-Work-Git\skills\anthology-release-ops\scripts\anthology_release_ops.py workgit --version YYYY.MM.DD.N --notes "..."
 ```
 
 Does:
@@ -227,7 +227,7 @@ Does:
 
 Rules:
 
-- Do not store DB archives under `E:\dev\Anthology-Work-Git\db`.
+- Do not store DB archives under `F:\Editor_Stalker\Anthology-Work-Git\db`.
 - GitHub rejects zero-byte release assets; use at least 1 byte for test assets.
 - DB publishing must stop when a configured source path is missing.
 - A previously published DB path may disappear only when it is explicitly listed
@@ -240,14 +240,14 @@ Rules:
 - If upload fails after commit/push, stop and say which asset/phase failed.
 - After cleanup, verify GitHub contents API, not only raw GitHub URL.
 
-## Source
+## Game Files / Source
 
 ```powershell
-py -3 E:\dev\Anthology-Work-Git\skills\anthology-release-ops\scripts\anthology_release_ops.py source --version YYYY.MM.DD.N --notes "..."
+py -3 F:\Editor_Stalker\Anthology-Work-Git\skills\anthology-release-ops\scripts\anthology_release_ops.py source --version YYYY.MM.DD.N --notes "..."
 ```
 
-Commits and pushes `E:\dev\Anthology-Work-Git\projects\anthology-source` to
-`Alex020104/anthology-source`. This is maintainer-only and not part of
+Commits and pushes `F:\Editor_Stalker\Anthology-Work-Git\projects\anthology-game-files` to
+`Alex020104/anthology-game-files`. This is maintainer-only and not part of
 launcher updates.
 
 ## Safety Checklist
@@ -277,7 +277,7 @@ After publishing:
 - search for test leftovers:
 
 ```powershell
-rg -n "anthology_release_(test|batch)" E:\dev\Anthology-Work-Git D:\ANTHOLOGY\SYS_A.N.T.H.O.L.O.G.Y_mo2_CBT\mods "D:\ANTHOLOGY\Anomaly-1.5.3-Anthology 2.1\db"
+rg -n "anthology_release_(test|batch)" F:\Editor_Stalker\Anthology-Work-Git D:\ANTHOLOGY\SYS_A.N.T.H.O.L.O.G.Y_mo2_CBT\mods "D:\ANTHOLOGY\Anomaly-1.5.3-Anthology 2.1\db"
 ```
 
 Never print GitHub credentials or tokens.

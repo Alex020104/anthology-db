@@ -22,12 +22,12 @@
   `*R.A.K Weapon Pack Adaptation Global A.N.T.H.O.L.O.G.Y*/**`
 - Test files named `anthology_release_*` must not remain in the repo.
 
-## Anthology Source
+## Anthology Game Files
 
-- Root: `F:\Editor_Stalker\Anthology-Work-Git\projects\anthology-source`
-- Repo: `Alex020104/anthology-source`
-- Scope: tracked source snapshot, mainly `gamedata/configs` and `gamedata/scripts`
-- Delivery: plain git push, no launcher build, no update manifest, no release asset.
+- Root: `F:\Editor_Stalker\Anthology-Work-Git\projects\anthology-game-files`
+- Repo: `Alex020104/anthology-game-files`
+- Scope: tracked game-file payload packages and separate launcher game packages.
+- Delivery: `version.json` plus GitHub Release assets through the `game-package` command.
 
 ## Anthology Work Git
 

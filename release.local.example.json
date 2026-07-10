@@ -4,9 +4,9 @@
     "launcher_dir": "C:\\Path\\To\\Anthology-Work-Git\\projects\\AnthologyLauncher",
     "modpack_dir": "C:\\Path\\To\\ANTHOLOGY\\SYS_A.N.T.H.O.L.O.G.Y_mo2_CBT\\mods",
     "live_game_dir": "C:\\Path\\To\\ANTHOLOGY\\Anomaly-1.5.3-Anthology 2.1",
-    "game_payload_dir": "C:\\Path\\To\\anthology-game-files",
-    "source_dir": "C:\\Path\\To\\Anthology-Work-Git\\projects\\anthology-source",
-    "engine_dir": "C:\\Path\\To\\anthology-mt-engine",
+    "game_payload_dir": "C:\\Path\\To\\Anthology-Work-Git\\projects\\anthology-game-files",
+    "source_dir": "C:\\Path\\To\\Anthology-Work-Git\\projects\\anthology-game-files",
+    "engine_dir": "C:\\Path\\To\\Anthology-Work-Git\\projects\\anthology-mt-engine",
     "engine_branch": "main",
     "engine_build_script": "C:\\Path\\To\\Anthology-Work-Git\\tools\\build_anthology_engine.ps1"
   },
@@ -15,6 +15,7 @@
     "modpack_repo": "Alex020104/anthology-mo2-modpack",
     "db_repo": "Alex020104/anthology-db",
     "game_payload_repo": "Alex020104/anthology-game-files",
+    "source_repo": "Alex020104/anthology-game-files",
     "engine_repo": "Alex020104/anthology-mt-engine"
   }
 }

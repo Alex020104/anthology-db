@@ -80,8 +80,8 @@ py -3 F:\Editor_Stalker\Anthology-Work-Git\skills\anthology-release-ops\scripts\
 ```text
 launcher repo:  F:\Editor_Stalker\Anthology-Work-Git\projects\AnthologyLauncher
 modpack repo:   D:\ANTHOLOGY\SYS_A.N.T.H.O.L.O.G.Y_mo2_CBT\mods
-engine repo:    F:\Editor_Stalker\Anthology-Work-Git\projects\xray-monolith
-source repo:    F:\Editor_Stalker\Anthology-Work-Git\projects\anthology-source
+engine repo:    F:\Editor_Stalker\Anthology-Work-Git\projects\anthology-mt-engine
+game files repo: F:\Editor_Stalker\Anthology-Work-Git\projects\anthology-game-files
 ```
 
 Публичные репозитории:
@@ -90,10 +90,10 @@ source repo:    F:\Editor_Stalker\Anthology-Work-Git\projects\anthology-source
 - `Alex020104/anthology-mo2-modpack`
 - `Alex020104/anthology-db`
 - `Alex020104/anthology-mt-engine`
-- `Alex020104/anthology-source`
+- `Alex020104/anthology-game-files`
 
-`anthology-source` хранит source snapshot для сопровождения и ревью. Лаунчер
-его не скачивает и не использует как update channel.
+`anthology-game-files` хранит игровые payload-пакеты и отдельные game packages.
+Лаунчер читает их через `version.json` и GitHub Release assets.
 
 ## Release Helper
 

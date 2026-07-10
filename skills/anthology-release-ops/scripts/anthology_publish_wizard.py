@@ -69,7 +69,7 @@ def configured_local_path(
 HELPER = configured_local_path("release_helper", "ANTHOLOGY_RELEASE_HELPER", WORKGIT_DIR / "skills" / "anthology-release-ops" / "scripts" / "anthology_release_ops.py")
 LAUNCHER_DIR = configured_local_path("launcher_dir", "ANTHOLOGY_LAUNCHER_DIR", WORKGIT_DIR / "projects" / "AnthologyLauncher")
 MODPACK_DIR = configured_local_path("modpack_dir", "ANTHOLOGY_MODPACK_DIR")
-ENGINE_DIR = configured_local_path("engine_dir", "ANTHOLOGY_ENGINE_DIR", WORKGIT_DIR.parent / "anthology-mt-engine")
+ENGINE_DIR = configured_local_path("engine_dir", "ANTHOLOGY_ENGINE_DIR", WORKGIT_DIR / "projects" / "anthology-mt-engine")
 ENGINE_BRANCH = os.environ.get("ANTHOLOGY_ENGINE_BRANCH") or LOCAL_PATHS.get("engine_branch") or "main"
 ENGINE_REPO = os.environ.get("ANTHOLOGY_ENGINE_REPO") or LOCAL_REPOS.get("engine_repo") or "Alex020104/anthology-mt-engine"
 ENGINE_BUILD_SCRIPT = configured_local_path("engine_build_script", "ANTHOLOGY_ENGINE_BUILD_SCRIPT", WORKGIT_DIR / "tools" / "build_anthology_engine.ps1")
