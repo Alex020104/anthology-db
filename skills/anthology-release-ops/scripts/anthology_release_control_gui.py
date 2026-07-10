@@ -1213,14 +1213,34 @@ class ReleaseControl(tk.Tk):
             return branch
         return "main"
 
+    def git_dirty_count(self, root: Path) -> int:
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=str(root),
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        if result.returncode != 0:
+            return -1
+        return len([line for line in (result.stdout or "").splitlines() if line.strip()])
+
     def sync_repo_commands(self, label: str, root: Path) -> list[tuple[str, list[str], Path]]:
         branch = self.current_git_branch(root)
-        return [
-            (f"{label}: fetch", ["git", "fetch", "origin", branch, "--prune"], root),
+        commands = [(f"{label}: fetch", ["git", "fetch", "origin", branch, "--prune"], root)]
+        dirty_count = self.git_dirty_count(root)
+        if dirty_count != 0:
+            reason = "unknown git status error" if dirty_count < 0 else f"{dirty_count} local changes"
+            self._log(f"{label}: pull skipped ({reason}). Commit or stash local changes before pulling.")
+            commands.append((f"{label}: status (pull skipped)", ["git", "status", "--short", "--branch"], root))
+            return commands
+        commands.extend([
             (f"{label}: pull", ["git", "pull", "--ff-only", "origin", branch], root),
             (f"{label}: status", ["git", "status", "--short", "--branch"], root),
-        ]
-
+        ])
+        return commands
     def sync_repo(self, label: str, root: Path) -> None:
         if not self.is_git_repo_path(root):
             messagebox.showerror("Синхронизация", f"Не найден git-репозиторий для {label}:\n{root}")
