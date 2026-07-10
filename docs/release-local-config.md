@@ -33,7 +33,7 @@ You can also override any path with an environment variable:
 - `ANTHOLOGY_ENGINE_BUILD_SCRIPT`
 
 The public `update_rules.json` should store logical/relative DB paths such as
-`db/configs` and `db/mods`, not absolute paths like `X:\...`.
+`db/configs` and `db/mods`, not maintainer-specific absolute disk paths.
 
 ## Game mechanics payload
 

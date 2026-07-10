@@ -17,9 +17,9 @@ AlwaysShowDirOnReadyPage=yes
 DisableProgramGroupPage=yes
 OutputDir=D:\Games
 OutputBaseFilename=Anthology_Setup
-SetupIconFile=E:\dev\Anthology-Work-Git\projects\installer\AnthologyLauncher.ico
-WizardImageFile=E:\dev\Anthology-Work-Git\projects\installer\assets\wizard-image.bmp
-WizardSmallImageFile=E:\dev\Anthology-Work-Git\projects\installer\assets\wizard-background.bmp
+SetupIconFile=AnthologyLauncher.ico
+WizardImageFile=assets\wizard-image.bmp
+WizardSmallImageFile=assets\wizard-background.bmp
 UninstallDisplayIcon={app}\{#LauncherRelativePath}
 Compression=lzma2/ultra64
 SolidCompression=yes
@@ -57,7 +57,7 @@ Name: "desktopicon"; Description: "Создать ярлык ANTHOLOGY на ра
 [Files]
 Source: "C:\Program Files\7-Zip\7z.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 Source: "C:\Program Files\7-Zip\7z.dll"; DestDir: "{tmp}"; Flags: deleteafterinstall
-Source: "E:\dev\Anthology-Work-Git\projects\installer\bin\ExtractWithProgress.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "bin\ExtractWithProgress.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Icons]
 Name: "{userprograms}\ANTHOLOGY"; Filename: "{app}\{#LauncherRelativePath}"; WorkingDir: "{app}\Anomaly-1.5.3-Anthology 2.1"
