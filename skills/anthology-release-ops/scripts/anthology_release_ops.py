@@ -406,15 +406,17 @@ def py_string(value: str) -> str:
 
 
 def launcher_news_pattern(lang: str) -> re.Pattern[str]:
+    escaped_lang = re.escape(lang)
     return re.compile(
-        rf'(?ms)(?P<prefix>    "{re.escape(lang)}": \{{.*?)(?P<entries>(?:        "news_\d+": "(?:\\.|[^"\\])*",\n        "news_\d+_body": "(?:\\.|[^"\\])*",\n)+)'
+        rf'(?ms)(?P<prefix>^[ \t]*"{escaped_lang}"\s*:\s*\{{.*?)(?P<entries>(?:^[ \t]*"news_\d+"\s*:\s*"(?:\\.|[^"\\])*"\s*,\r?\n^[ \t]*"news_\d+_body"\s*:\s*"(?:\\.|[^"\\])*"\s*,\r?\n)+)'
     )
 
 
 def parse_launcher_news_entries(block: str) -> list[tuple[str, str]]:
     pattern = re.compile(
-        r'        "news_(\d+)": "((?:\\.|[^"\\])*)",\n'
-        r'        "news_\1_body": "((?:\\.|[^"\\])*)",\n'
+        r'^[ \t]*"news_(\d+)"\s*:\s*"((?:\\.|[^"\\])*)"\s*,\r?\n'
+        r'^[ \t]*"news_\1_body"\s*:\s*"((?:\\.|[^"\\])*)"\s*,',
+        re.M,
     )
     entries = []
     for match in pattern.finditer(block):
