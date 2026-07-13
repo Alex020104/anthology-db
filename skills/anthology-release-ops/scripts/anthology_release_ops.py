@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 import os
@@ -580,6 +581,139 @@ def replace_launcher_news(root: Path, ru_entries: list[tuple[str, str]], en_entr
     write_text_preserve_newlines(script, text)
 
 
+LIBRARY_CATEGORIES = {"dev", "modmakers", "solutions"}
+
+
+def launcher_library_block(root: Path) -> tuple[dict, int, int, str]:
+    script = root / "anthology_launcher.py"
+    text = read_text_fallback(script)
+    tree = ast.parse(text)
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            if any(isinstance(target, ast.Name) and target.id == "LIBRARY_LINKS" for target in node.targets):
+                if node.end_lineno is None:
+                    raise ReleaseError("Could not locate end of LIBRARY_LINKS block.")
+                lines = text.splitlines(keepends=True)
+                start = sum(len(line) for line in lines[: node.lineno - 1])
+                end = sum(len(line) for line in lines[: node.end_lineno])
+                value = ast.literal_eval(node.value)
+                if not isinstance(value, dict):
+                    raise ReleaseError("LIBRARY_LINKS must be a dict.")
+                for category in LIBRARY_CATEGORIES:
+                    value.setdefault(category, [])
+                    if not isinstance(value[category], list):
+                        raise ReleaseError(f"LIBRARY_LINKS[{category!r}] must be a list.")
+                return value, start, end, text
+    raise ReleaseError("Could not find LIBRARY_LINKS in anthology_launcher.py")
+
+
+def render_launcher_library_links(data: dict) -> str:
+    ordered = {category: data.get(category, []) for category in ("dev", "modmakers", "solutions")}
+    return "LIBRARY_LINKS = " + json.dumps(ordered, ensure_ascii=False, indent=4) + "\n"
+
+
+def save_launcher_library(root: Path, data: dict) -> None:
+    _old, start, end, text = launcher_library_block(root)
+    new_text = text[:start] + render_launcher_library_links(data) + text[end:]
+    write_text_preserve_newlines(root / "anthology_launcher.py", new_text)
+
+
+def launcher_library_entries(root: Path, category: str | None = None) -> dict:
+    data, _start, _end, _text = launcher_library_block(root)
+    if category:
+        validate_library_category(category)
+        return {category: data.get(category, [])}
+    return {category: data.get(category, []) for category in ("dev", "modmakers", "solutions")}
+
+
+def validate_library_category(category: str) -> None:
+    if category not in LIBRARY_CATEGORIES:
+        raise ReleaseError("Library category must be one of: dev, modmakers, solutions.")
+
+
+def normalize_library_entry(item: dict, pos: str) -> dict:
+    if not isinstance(item, dict):
+        raise ReleaseError(f"Library entry {pos} must be an object.")
+    title_ru = str(item.get("title_ru") or item.get("title") or "").strip()
+    body_ru = str(item.get("body_ru") or item.get("body") or "").strip()
+    url = str(item.get("url") or "").strip()
+    if not title_ru or not body_ru or not url:
+        raise ReleaseError(f"Library entry {pos} requires title_ru/title, body_ru/body and url.")
+    summary_ru = str(item.get("summary_ru") or item.get("summary") or "").strip()
+    title_en = str(item.get("title_en") or title_ru).strip()
+    summary_en = str(item.get("summary_en") or summary_ru).strip()
+    body_en = str(item.get("body_en") or body_ru).strip()
+    return {
+        "title_ru": title_ru,
+        "summary_ru": summary_ru,
+        "body_ru": body_ru,
+        "title_en": title_en,
+        "summary_en": summary_en,
+        "body_en": body_en,
+        "url": url,
+        "discord_url": str(item.get("discord_url") or "").strip(),
+        "image_url": str(item.get("image_url") or item.get("image") or "").strip(),
+    }
+
+
+def add_launcher_library_entry(
+    root: Path,
+    category: str,
+    title_ru: str,
+    summary_ru: str,
+    body_ru: str,
+    url: str,
+    title_en: str | None = None,
+    summary_en: str | None = None,
+    body_en: str | None = None,
+    image_url: str | None = None,
+    discord_url: str | None = None,
+) -> None:
+    validate_library_category(category)
+    if not title_ru or not body_ru or not url:
+        raise ReleaseError("Library entry requires --title, --body and --url.")
+    data, _start, _end, _text = launcher_library_block(root)
+    data.setdefault(category, [])
+    data[category].append(normalize_library_entry({
+        "title_ru": title_ru,
+        "summary_ru": summary_ru,
+        "body_ru": body_ru,
+        "title_en": title_en or title_ru,
+        "summary_en": summary_en or summary_ru,
+        "body_en": body_en or body_ru,
+        "url": url,
+        "discord_url": discord_url or "",
+        "image_url": image_url or "",
+    }, f"{category} new"))
+    save_launcher_library(root, data)
+
+
+def replace_launcher_library(root: Path, data: dict) -> None:
+    if not isinstance(data, dict):
+        raise ReleaseError("Library payload must be an object.")
+    normalized = {category: [] for category in ("dev", "modmakers", "solutions")}
+    source = data.get("library") if isinstance(data.get("library"), dict) else data
+    for category in normalized:
+        entries = source.get(category, [])
+        if not isinstance(entries, list):
+            raise ReleaseError(f"Library category {category} must be a list.")
+        normalized[category] = [
+            normalize_library_entry(item, f"{category} #{index}")
+            for index, item in enumerate(entries, start=1)
+        ]
+    save_launcher_library(root, normalized)
+
+
+def delete_launcher_library_entry(root: Path, category: str, index: int) -> None:
+    validate_library_category(category)
+    data, _start, _end, _text = launcher_library_block(root)
+    entries = data.get(category, [])
+    if index < 1 or index > len(entries):
+        raise ReleaseError(f"Library entry index {index} is out of range for {category}; found {len(entries)} item(s).")
+    del entries[index - 1]
+    save_launcher_library(root, data)
+
+
 def is_modpack_update_path(path: str) -> bool:
     candidate = Path(path.replace("\\", "/"))
     if candidate.is_absolute():
@@ -832,6 +966,87 @@ def command_launcher_news_apply(args: argparse.Namespace) -> None:
     require_launcher_build_tools(args, root)
     replace_launcher_news(root, ru_entries, en_entries)
     args.notes = args.notes or f"Apply launcher news list ({len(ru_entries)} items)"
+    command_launcher(args)
+
+
+def command_launcher_library_add(args: argparse.Namespace) -> None:
+    root = Path(args.path or LAUNCHER_DIR)
+    title = (args.title or "").strip()
+    summary = (args.summary or "").strip()
+    body = (args.body or "").strip()
+    url = (args.url or "").strip()
+    image_url = (args.image_url or "").strip()
+    discord_url = (args.discord_url or "").strip()
+    require_launcher_build_tools(args, root)
+    add_launcher_library_entry(
+        root,
+        args.category,
+        title,
+        summary,
+        body,
+        url,
+        title_en=(args.title_en or "").strip() or None,
+        summary_en=(args.summary_en or "").strip() or None,
+        body_en=(args.body_en or "").strip() or None,
+        image_url=image_url or None,
+        discord_url=discord_url or None,
+    )
+    args.notes = args.notes or f"Launcher library: {title}"
+    command_launcher(args)
+
+
+def command_launcher_library_list(args: argparse.Namespace) -> None:
+    root = Path(args.path or LAUNCHER_DIR)
+    data = launcher_library_entries(root, args.category)
+    print(json.dumps(
+        {
+            "type": "launcher-library-list",
+            "category": args.category or "all",
+            "library": {
+                category: [
+                    {
+                        "index": index,
+                        "title_ru": str(item.get("title_ru", "")),
+                        "summary_ru": str(item.get("summary_ru", "")),
+                        "body_ru": str(item.get("body_ru", "")),
+                        "title_en": str(item.get("title_en", "")),
+                        "summary_en": str(item.get("summary_en", "")),
+                        "body_en": str(item.get("body_en", "")),
+                        "url": str(item.get("url", "")),
+                        "discord_url": str(item.get("discord_url", "")),
+                        "image_url": str(item.get("image_url", "")),
+                    }
+                    for index, item in enumerate(entries, start=1)
+                ]
+                for category, entries in data.items()
+            },
+        },
+        ensure_ascii=False,
+        indent=2,
+    ))
+
+
+def command_launcher_library_delete(args: argparse.Namespace) -> None:
+    root = Path(args.path or LAUNCHER_DIR)
+    require_launcher_build_tools(args, root)
+    delete_launcher_library_entry(root, args.category, args.index)
+    args.notes = args.notes or f"Delete launcher library {args.category} #{args.index}"
+    command_launcher(args)
+
+
+def command_launcher_library_apply(args: argparse.Namespace) -> None:
+    root = Path(args.path or LAUNCHER_DIR)
+    if args.library_json:
+        payload = json.loads(args.library_json)
+    elif args.library_file:
+        payload = json.loads(read_text_fallback(Path(args.library_file)))
+    else:
+        raise ReleaseError("launcher-library-apply requires --library-json or --library-file.")
+    require_launcher_build_tools(args, root)
+    replace_launcher_library(root, payload)
+    data = launcher_library_entries(root)
+    total = sum(len(entries) for entries in data.values())
+    args.notes = args.notes or f"Apply launcher library ({total} entries)"
     command_launcher(args)
 
 
@@ -1414,6 +1629,43 @@ def build_parser() -> argparse.ArgumentParser:
     launcher_news_apply.add_argument("--skip-build", action="store_true", help="Do not run PyInstaller")
     launcher_news_apply.add_argument("--skip-upload", action="store_true", help="Do not replace latest GitHub release exe")
     launcher_news_apply.set_defaults(func=command_launcher_news_apply)
+
+    launcher_library_add = sub.add_parser("launcher-library-add", help="Add a launcher library entry and publish launcher")
+    add_common(launcher_library_add)
+    launcher_library_add.add_argument("--category", choices=["dev", "modmakers", "solutions"], required=True, help="Library category")
+    launcher_library_add.add_argument("--title", required=True, help="Russian entry title")
+    launcher_library_add.add_argument("--summary", default="", help="Russian short summary shown in the list")
+    launcher_library_add.add_argument("--body", required=True, help="Russian entry description")
+    launcher_library_add.add_argument("--url", required=True, help="Download/page URL opened by the Download button")
+    launcher_library_add.add_argument("--discord-url", help="Optional Discord URL opened by the Discord button")
+    launcher_library_add.add_argument("--image-url", help="Optional image URL shown in list/details")
+    launcher_library_add.add_argument("--title-en", help="English entry title; Russian title is used when omitted")
+    launcher_library_add.add_argument("--summary-en", help="English short summary; Russian summary is used when omitted")
+    launcher_library_add.add_argument("--body-en", help="English entry description; Russian body is used when omitted")
+    launcher_library_add.add_argument("--skip-build", action="store_true", help="Do not run PyInstaller")
+    launcher_library_add.add_argument("--skip-upload", action="store_true", help="Do not replace latest GitHub release exe")
+    launcher_library_add.set_defaults(func=command_launcher_library_add)
+
+    launcher_library_list = sub.add_parser("launcher-library-list", help="List launcher library entries")
+    launcher_library_list.add_argument("--path", help="Override project/repo path")
+    launcher_library_list.add_argument("--category", choices=["dev", "modmakers", "solutions"], help="Library category")
+    launcher_library_list.set_defaults(func=command_launcher_library_list)
+
+    launcher_library_delete = sub.add_parser("launcher-library-delete", help="Delete a launcher library entry and publish launcher")
+    add_common(launcher_library_delete)
+    launcher_library_delete.add_argument("--category", choices=["dev", "modmakers", "solutions"], required=True, help="Library category")
+    launcher_library_delete.add_argument("--index", type=int, required=True, help="1-based entry index to delete")
+    launcher_library_delete.add_argument("--skip-build", action="store_true", help="Do not run PyInstaller")
+    launcher_library_delete.add_argument("--skip-upload", action="store_true", help="Do not replace latest GitHub release exe")
+    launcher_library_delete.set_defaults(func=command_launcher_library_delete)
+
+    launcher_library_apply = sub.add_parser("launcher-library-apply", help="Replace launcher library and publish launcher once")
+    add_common(launcher_library_apply)
+    launcher_library_apply.add_argument("--library-json", help="JSON payload with all library categories")
+    launcher_library_apply.add_argument("--library-file", help="Path to JSON payload with all library categories")
+    launcher_library_apply.add_argument("--skip-build", action="store_true", help="Do not run PyInstaller")
+    launcher_library_apply.add_argument("--skip-upload", action="store_true", help="Do not replace latest GitHub release exe")
+    launcher_library_apply.set_defaults(func=command_launcher_library_apply)
 
     modpack = sub.add_parser("modpack", help="Publish MO2 modpack update")
     add_common(modpack)

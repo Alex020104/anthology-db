@@ -686,6 +686,7 @@ class ReleaseControl(tk.Tk):
 
         self._build_content_tab()
         self._build_launcher_tab()
+        self._build_library_tab()
         self._build_engine_tab()
         self._build_status_tab()
 
@@ -835,6 +836,80 @@ class ReleaseControl(tk.Tk):
         self.news_ru_body = self._form_text(form, "RU текст", height=6)
         self._form_entry(form, "EN title", self.news_en_title)
         self.news_en_body = self._form_text(form, "EN body", height=6)
+
+    def _build_library_tab(self) -> None:
+        tab = ttk.Frame(self.notebook, padding=14)
+        self.notebook.add(tab, text="Библиотека")
+
+        box = ttk.Labelframe(tab, text="Библиотека новых проектов и решений", padding=14)
+        box.pack(fill="both", expand=True)
+        ttk.Label(
+            box,
+            text="Добавляет в лаунчер форумную запись: название, описание и кнопку Скачать, которая открывает сайт. Файлы не загружаются.",
+            style="CardMuted.TLabel",
+        ).pack(anchor="w", pady=(0, 12))
+
+        row = ttk.Frame(box)
+        row.pack(fill="x", pady=(0, 10))
+        ttk.Label(row, text="Категория:", style="CardMuted.TLabel").pack(side="left", padx=(0, 8))
+        self.library_category = tk.StringVar(value="dev | Личные проекты разработчиков")
+        category_box = ttk.Combobox(
+            row,
+            textvariable=self.library_category,
+            values=[
+                "dev | Личные проекты разработчиков",
+                "modmakers | Новые проекты от модмейкеров",
+                "solutions | Решения спорных механик разработчиков",
+            ],
+            state="readonly",
+            width=48,
+        )
+        category_box.pack(side="left", padx=(0, 12))
+        ttk.Button(row, text="Показать список", command=self.show_library_entries).pack(side="left", padx=(0, 8))
+        ttk.Button(row, text="Загрузить текущую", command=self.refresh_library_draft).pack(side="left", padx=(0, 8))
+        ttk.Button(row, text="Очистить форму", command=self.clear_library_form).pack(side="left", padx=(0, 8))
+        ttk.Button(row, text="Добавить в черновик", command=self.add_library_draft_item).pack(side="left")
+        ttk.Button(row, text="Опубликовать библиотеку", command=self.publish_library_draft, style="Accent.TButton").pack(side="right")
+
+        editor = ttk.PanedWindow(box, orient="horizontal")
+        editor.pack(fill="both", expand=True)
+
+        list_frame = ttk.Frame(editor)
+        editor.add(list_frame, weight=1)
+        form = ttk.Frame(editor, padding=(14, 0, 0, 0))
+        editor.add(form, weight=2)
+
+        self.library_items = {"dev": [], "modmakers": [], "solutions": []}
+        self.library_selected = None
+        self.library_status = tk.StringVar(value="Черновик библиотеки: загрузи текущую или добавляй новые записи.")
+        ttk.Label(list_frame, textvariable=self.library_status, style="Muted.TLabel").pack(anchor="w", pady=(0, 6))
+        self.library_tree = ttk.Treeview(list_frame, columns=("category", "title"), show="headings", height=18)
+        self.library_tree.heading("category", text="Раздел")
+        self.library_tree.heading("title", text="Запись")
+        self.library_tree.column("category", width=90, stretch=False)
+        self.library_tree.column("title", width=300)
+        self.library_tree.pack(fill="both", expand=True)
+        self.library_tree.bind("<<TreeviewSelect>>", self.on_library_select)
+        draft_buttons = ttk.Frame(list_frame)
+        draft_buttons.pack(fill="x", pady=(8, 0))
+        ttk.Button(draft_buttons, text="Удалить из черновика", command=self.delete_library_draft_item, style="Danger.TButton").pack(side="left", padx=(0, 8))
+        ttk.Button(draft_buttons, text="Очистить черновик", command=self.clear_library_draft).pack(side="left")
+
+        self.library_ru_title = tk.StringVar()
+        self.library_en_title = tk.StringVar()
+        self.library_url = tk.StringVar()
+        self.library_discord_url = tk.StringVar()
+        self.library_image_url = tk.StringVar()
+        self._form_entry(form, "RU название темы", self.library_ru_title)
+        self.library_ru_summary = self._form_text(form, "RU краткое описание", height=3)
+        self.library_ru_body = self._form_text(form, "RU полное описание", height=5)
+        self._form_entry(form, "Ссылка для кнопки Скачать", self.library_url)
+        self._form_entry(form, "Ссылка для кнопки Discord (можно оставить пустой)", self.library_discord_url)
+        self._form_entry(form, "Ссылка на картинку (можно оставить пустой)", self.library_image_url)
+        self._form_entry(form, "EN title (можно оставить пустым)", self.library_en_title)
+        self.library_en_summary = self._form_text(form, "EN short summary (можно оставить пустым)", height=3)
+        self.library_en_body = self._form_text(form, "EN full description (можно оставить пустым)", height=5)
+        self.refresh_library_draft(silent=True)
 
     def _build_engine_tab(self) -> None:
         tab = ttk.Frame(self.notebook, padding=14)
@@ -1900,6 +1975,266 @@ class ReleaseControl(tk.Tk):
         self.news_dirty = False
         self.update_news_status()
         self.refresh_news_silent()
+
+    def library_category_key(self) -> str:
+        return self.library_category.get().split("|", 1)[0].strip()
+
+    def clear_library_form(self) -> None:
+        self.library_ru_title.set("")
+        self.library_url.set("")
+        self.library_discord_url.set("")
+        self.library_image_url.set("")
+        self.library_en_title.set("")
+        self.set_text_value(self.library_ru_summary, "")
+        self.set_text_value(self.library_ru_body, "")
+        self.set_text_value(self.library_en_summary, "")
+        self.set_text_value(self.library_en_body, "")
+
+    def show_library_entries(self) -> None:
+        self.run_command(
+            [
+                sys.executable,
+                str(HELPER),
+                "launcher-library-list",
+                "--category",
+                self.library_category_key(),
+            ],
+            WORKGIT_DIR,
+            title="Список записей библиотеки лаунчера",
+        )
+
+    def library_category_label(self, category: str) -> str:
+        return {
+            "dev": "Личные",
+            "modmakers": "Модмейкеры",
+            "solutions": "Решения",
+        }.get(category, category)
+
+    def refresh_library_draft(self, silent: bool = False) -> None:
+        try:
+            output = self.capture(
+                [sys.executable, str(HELPER), "launcher-library-list"],
+                WORKGIT_DIR,
+            )
+            payload = json.loads(output)
+            library = payload.get("library", {})
+            self.library_items = {
+                "dev": list(library.get("dev", [])),
+                "modmakers": list(library.get("modmakers", [])),
+                "solutions": list(library.get("solutions", [])),
+            }
+            self.render_library_tree()
+            total = sum(len(entries) for entries in self.library_items.values())
+            self.library_status.set(f"Черновик библиотеки: загружено {total} записей.")
+        except Exception as exc:
+            if not silent:
+                messagebox.showerror("Библиотека", f"Не удалось загрузить текущую библиотеку:\n{exc}")
+
+    def render_library_tree(self, select_iid: str | None = None) -> None:
+        for iid in self.library_tree.get_children():
+            self.library_tree.delete(iid)
+        for category in ("dev", "modmakers", "solutions"):
+            for index, item in enumerate(self.library_items.get(category, []), start=1):
+                iid = f"{category}:{index}"
+                title = str(item.get("title_ru") or item.get("title") or "(без названия)")
+                self.library_tree.insert("", "end", iid=iid, values=(self.library_category_label(category), title))
+        if select_iid and self.library_tree.exists(select_iid):
+            self.library_tree.selection_set(select_iid)
+            self.library_tree.see(select_iid)
+
+    def selected_library_iid(self) -> tuple[str, int, str] | None:
+        selection = self.library_tree.selection()
+        if not selection:
+            return None
+        iid = selection[0]
+        try:
+            category, raw_index = iid.split(":", 1)
+            return category, int(raw_index) - 1, iid
+        except ValueError:
+            return None
+
+    def on_library_select(self, _event=None) -> None:
+        selected = self.selected_library_iid()
+        if not selected:
+            return
+        category, index, _iid = selected
+        entries = self.library_items.get(category, [])
+        if index < 0 or index >= len(entries):
+            return
+        item = entries[index]
+        self.library_selected = (category, index)
+        self.library_category.set({
+            "dev": "dev | Личные проекты разработчиков",
+            "modmakers": "modmakers | Новые проекты от модмейкеров",
+            "solutions": "solutions | Решения спорных механик разработчиков",
+        }.get(category, "dev | Личные проекты разработчиков"))
+        self.library_ru_title.set(str(item.get("title_ru", "")))
+        self.set_text_value(self.library_ru_summary, str(item.get("summary_ru", "")))
+        self.set_text_value(self.library_ru_body, str(item.get("body_ru", "")))
+        self.library_url.set(str(item.get("url", "")))
+        self.library_discord_url.set(str(item.get("discord_url", "")))
+        self.library_image_url.set(str(item.get("image_url", "")))
+        self.library_en_title.set(str(item.get("title_en", "")))
+        self.set_text_value(self.library_en_summary, str(item.get("summary_en", "")))
+        self.set_text_value(self.library_en_body, str(item.get("body_en", "")))
+
+    def library_form_item(self) -> dict | None:
+        title = self.library_ru_title.get().strip()
+        summary = self.library_ru_summary.get("1.0", "end").strip()
+        body = self.library_ru_body.get("1.0", "end").strip()
+        url = self.library_url.get().strip()
+        if not title or not body or not url:
+            messagebox.showwarning("Библиотека", "Заполни RU название, RU полное описание и ссылку Скачать.")
+            return None
+        title_en = self.library_en_title.get().strip() or title
+        summary_en = self.library_en_summary.get("1.0", "end").strip() or summary
+        body_en = self.library_en_body.get("1.0", "end").strip() or body
+        return {
+            "title_ru": title,
+            "summary_ru": summary,
+            "body_ru": body,
+            "title_en": title_en,
+            "summary_en": summary_en,
+            "body_en": body_en,
+            "url": url,
+            "discord_url": self.library_discord_url.get().strip(),
+            "image_url": self.library_image_url.get().strip(),
+        }
+
+    def add_library_draft_item(self) -> None:
+        item = self.library_form_item()
+        if not item:
+            return
+        category = self.library_category_key()
+        self.library_items.setdefault(category, []).append(item)
+        iid = f"{category}:{len(self.library_items[category])}"
+        self.render_library_tree(select_iid=iid)
+        total = sum(len(entries) for entries in self.library_items.values())
+        self.library_status.set(f"Черновик библиотеки: {total} записей. Можно добавить ещё и выпустить одним разом.")
+        self.clear_library_form()
+
+    def delete_library_draft_item(self) -> None:
+        selected = self.selected_library_iid()
+        if not selected:
+            messagebox.showwarning("Библиотека", "Выбери запись в черновике слева.")
+            return
+        category, index, _iid = selected
+        entries = self.library_items.get(category, [])
+        if 0 <= index < len(entries):
+            del entries[index]
+        self.render_library_tree()
+        total = sum(len(items) for items in self.library_items.values())
+        self.library_status.set(f"Черновик библиотеки: {total} записей.")
+
+    def clear_library_draft(self) -> None:
+        if not messagebox.askyesno("Библиотека", "Очистить весь черновик библиотеки?"):
+            return
+        self.library_items = {"dev": [], "modmakers": [], "solutions": []}
+        self.render_library_tree()
+        self.library_status.set("Черновик библиотеки очищен.")
+
+    def write_library_payload_file(self) -> Path:
+        handle = tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8", suffix=".json", prefix="anthology_launcher_library_")
+        with handle:
+            json.dump({"library": self.library_items}, handle, ensure_ascii=False)
+        return Path(handle.name)
+
+    def publish_library_draft(self) -> None:
+        total = sum(len(entries) for entries in self.library_items.values())
+        if total < 1:
+            messagebox.showwarning("Библиотека", "В черновике нет записей.")
+            return
+        version = self.ask_version("лаунчера")
+        if not version:
+            return
+        notes = self.ask_notes("Заметки лаунчера", f"Библиотека: {total} записей")
+        if not notes:
+            return
+        if not self.confirm_publish(f"библиотеку лаунчера ({total} записей)", version, LAUNCHER_DIR):
+            return
+        payload_file = self.write_library_payload_file()
+        self.run_command(
+            [
+                sys.executable,
+                str(HELPER),
+                "launcher-library-apply",
+                "--version",
+                version,
+                "--notes",
+                notes,
+                "--library-file",
+                str(payload_file),
+            ],
+            WORKGIT_DIR,
+            on_success=lambda _out, path=payload_file: self.publish_library_done(path),
+            title=f"Publish launcher library {version}",
+        )
+
+    def publish_library_done(self, payload_file: Path | None = None) -> None:
+        if payload_file:
+            try:
+                payload_file.unlink(missing_ok=True)
+            except OSError:
+                pass
+        self.refresh_library_draft(silent=True)
+
+    def publish_library_entry(self) -> None:
+        category = self.library_category_key()
+        title = self.library_ru_title.get().strip()
+        summary = self.library_ru_summary.get("1.0", "end").strip()
+        body = self.library_ru_body.get("1.0", "end").strip()
+        url = self.library_url.get().strip()
+        discord_url = self.library_discord_url.get().strip()
+        image_url = self.library_image_url.get().strip()
+        title_en = self.library_en_title.get().strip()
+        summary_en = self.library_en_summary.get("1.0", "end").strip()
+        body_en = self.library_en_body.get("1.0", "end").strip()
+        if not title or not body or not url:
+            messagebox.showwarning("Библиотека", "Заполни RU название, RU описание и ссылку.")
+            return
+        version = self.ask_version("лаунчера")
+        if not version:
+            return
+        notes = self.ask_notes("Заметки лаунчера", f"Библиотека: {title}")
+        if not notes:
+            return
+        if not self.confirm_publish(f"запись библиотеки ({category})", version, LAUNCHER_DIR):
+            return
+        args = [
+            sys.executable,
+            str(HELPER),
+            "launcher-library-add",
+            "--version",
+            version,
+            "--notes",
+            notes,
+            "--category",
+            category,
+            "--title",
+            title,
+            "--summary",
+            summary,
+            "--body",
+            body,
+            "--url",
+            url,
+        ]
+        if image_url:
+            args.extend(["--image-url", image_url])
+        if discord_url:
+            args.extend(["--discord-url", discord_url])
+        if title_en:
+            args.extend(["--title-en", title_en])
+        if summary_en:
+            args.extend(["--summary-en", summary_en])
+        if body_en:
+            args.extend(["--body-en", body_en])
+        self.run_command(
+            args,
+            WORKGIT_DIR,
+            on_success=lambda _out: self.clear_library_form(),
+            title=f"Publish launcher library entry {version}",
+        )
 
     def check_launcher_public(self) -> None:
         script = (
