@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import queue
+import re
 import shutil
 import subprocess
 import sys
@@ -905,7 +906,7 @@ class ReleaseControl(tk.Tk):
         self.library_ru_body = self._form_text(form, "RU полное описание", height=5)
         self._form_entry(form, "Ссылка для кнопки Скачать", self.library_url)
         self._form_entry(form, "Ссылка для кнопки Discord (можно оставить пустой)", self.library_discord_url)
-        self._form_entry(form, "Ссылка на картинку (можно оставить пустой)", self.library_image_url)
+        self._form_image_entry(form)
         self._form_entry(form, "EN title (можно оставить пустым)", self.library_en_title)
         self.library_en_summary = self._form_text(form, "EN short summary (можно оставить пустым)", height=3)
         self.library_en_body = self._form_text(form, "EN full description (можно оставить пустым)", height=5)
@@ -949,6 +950,26 @@ class ReleaseControl(tk.Tk):
         )
         self.bind_text_input_shortcuts(entry)
         entry.pack(fill="x", pady=(0, 10))
+
+    def _form_image_entry(self, parent: ttk.Frame) -> None:
+        ttk.Label(parent, text="Картинка из файла или assets (можно оставить пустой)", style="Muted.TLabel").pack(anchor="w", pady=(0, 4))
+        row = ttk.Frame(parent)
+        row.pack(fill="x", pady=(0, 10))
+        entry = tk.Entry(
+            row,
+            textvariable=self.library_image_url,
+            bg=COLORS["log_bg"],
+            fg=COLORS["log_text"],
+            insertbackground=COLORS["log_text"],
+            selectbackground="#245d55",
+            selectforeground="#ffffff",
+            relief="flat",
+            borderwidth=0,
+            font=("Segoe UI", 10),
+        )
+        self.bind_text_input_shortcuts(entry)
+        entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
+        ttk.Button(row, text="Выбрать картинку", command=self.pick_library_image).pack(side="left")
 
     def _form_text(self, parent: ttk.Frame, label: str, height: int) -> tk.Text:
         ttk.Label(parent, text=label, style="Muted.TLabel").pack(anchor="w", pady=(0, 4))
@@ -1978,6 +1999,40 @@ class ReleaseControl(tk.Tk):
 
     def library_category_key(self) -> str:
         return self.library_category.get().split("|", 1)[0].strip()
+
+    def pick_library_image(self) -> None:
+        path_text = filedialog.askopenfilename(
+            title="Выбери картинку для библиотеки",
+            filetypes=[
+                ("Images", "*.png *.jpg *.jpeg *.webp"),
+                ("PNG", "*.png"),
+                ("JPEG", "*.jpg *.jpeg"),
+                ("WEBP", "*.webp"),
+                ("All files", "*.*"),
+            ],
+            parent=self,
+        )
+        if not path_text:
+            return
+        src = Path(path_text)
+        if not src.exists():
+            messagebox.showerror("Библиотека", f"Файл не найден:\n{src}")
+            return
+        try:
+            digest = sha256_file(src)[:10]
+            stem = re.sub(r"[^A-Za-z0-9_-]+", "_", src.stem).strip("_") or "image"
+            category = self.library_category_key()
+            suffix = src.suffix.lower() if src.suffix else ".png"
+            filename = f"library_{category}_{stem}_{digest}{suffix}"
+            assets_dir = LAUNCHER_DIR / "assets"
+            assets_dir.mkdir(parents=True, exist_ok=True)
+            dst = assets_dir / filename
+            if src.resolve() != dst.resolve():
+                shutil.copy2(src, dst)
+            self.library_image_url.set(filename)
+            self.library_status.set(f"Картинка добавлена в assets: {filename}")
+        except Exception as exc:
+            messagebox.showerror("Библиотека", f"Не удалось добавить картинку:\n{exc}")
 
     def clear_library_form(self) -> None:
         self.library_ru_title.set("")
