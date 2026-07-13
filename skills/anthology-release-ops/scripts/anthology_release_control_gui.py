@@ -871,6 +871,7 @@ class ReleaseControl(tk.Tk):
         ttk.Button(row, text="Очистить форму", command=self.clear_library_form).pack(side="left", padx=(0, 8))
         ttk.Button(row, text="Картинка", command=self.pick_library_image).pack(side="left", padx=(0, 8))
         ttk.Button(row, text="Добавить", command=self.add_library_draft_item).pack(side="left")
+        ttk.Button(row, text="Заменить выбранную", command=self.replace_library_draft_item).pack(side="left", padx=(8, 0))
         ttk.Button(row, text="Опубликовать библиотеку", command=self.publish_library_draft, style="Accent.TButton").pack(side="right")
 
         editor = ttk.PanedWindow(box, orient="horizontal")
@@ -2119,11 +2120,6 @@ class ReleaseControl(tk.Tk):
             return
         item = entries[index]
         self.library_selected = (category, index)
-        self.library_category.set({
-            "dev": "dev | Личные проекты разработчиков",
-            "modmakers": "modmakers | Новые проекты от модмейкеров",
-            "solutions": "solutions | Решения спорных механик разработчиков",
-        }.get(category, "dev | Личные проекты разработчиков"))
         self.library_ru_title.set(str(item.get("title_ru", "")))
         self.set_text_value(self.library_ru_summary, str(item.get("summary_ru", "")))
         self.set_text_value(self.library_ru_body, str(item.get("body_ru", "")))
@@ -2168,6 +2164,29 @@ class ReleaseControl(tk.Tk):
         total = sum(len(entries) for entries in self.library_items.values())
         self.library_status.set(f"Черновик библиотеки: {total} записей. Можно добавить ещё и выпустить одним разом.")
         self.clear_library_form()
+
+    def replace_library_draft_item(self) -> None:
+        selected = self.selected_library_iid()
+        if not selected:
+            messagebox.showwarning("Библиотека", "Выбери запись в черновике слева.")
+            return
+        item = self.library_form_item()
+        if not item:
+            return
+        old_category, index, _iid = selected
+        entries = self.library_items.get(old_category, [])
+        if index < 0 or index >= len(entries):
+            return
+        new_category = self.library_category_key()
+        if new_category == old_category:
+            entries[index] = item
+            select_iid = f"{new_category}:{index + 1}"
+        else:
+            del entries[index]
+            self.library_items.setdefault(new_category, []).append(item)
+            select_iid = f"{new_category}:{len(self.library_items[new_category])}"
+        self.render_library_tree(select_iid=select_iid)
+        self.library_status.set("Выбранная запись заменена в черновике. Публикация ещё не выполнена.")
 
     def delete_library_draft_item(self) -> None:
         selected = self.selected_library_iid()
