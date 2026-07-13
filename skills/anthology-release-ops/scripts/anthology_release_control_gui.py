@@ -869,7 +869,8 @@ class ReleaseControl(tk.Tk):
         ttk.Button(row, text="Показать список", command=self.show_library_entries).pack(side="left", padx=(0, 8))
         ttk.Button(row, text="Загрузить текущую", command=self.refresh_library_draft).pack(side="left", padx=(0, 8))
         ttk.Button(row, text="Очистить форму", command=self.clear_library_form).pack(side="left", padx=(0, 8))
-        ttk.Button(row, text="Добавить в черновик", command=self.add_library_draft_item).pack(side="left")
+        ttk.Button(row, text="Картинка", command=self.pick_library_image).pack(side="left", padx=(0, 8))
+        ttk.Button(row, text="Добавить", command=self.add_library_draft_item).pack(side="left")
         ttk.Button(row, text="Опубликовать библиотеку", command=self.publish_library_draft, style="Accent.TButton").pack(side="right")
 
         editor = ttk.PanedWindow(box, orient="horizontal")
