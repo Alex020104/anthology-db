@@ -582,6 +582,7 @@ def replace_launcher_news(root: Path, ru_entries: list[tuple[str, str]], en_entr
 
 
 LIBRARY_CATEGORIES = {"dev", "modmakers", "solutions"}
+INFO_SECTIONS = {"requirements", "original", "modpack"}
 
 
 def launcher_library_block(root: Path) -> tuple[dict, int, int, str]:
@@ -712,6 +713,72 @@ def delete_launcher_library_entry(root: Path, category: str, index: int) -> None
         raise ReleaseError(f"Library entry index {index} is out of range for {category}; found {len(entries)} item(s).")
     del entries[index - 1]
     save_launcher_library(root, data)
+
+
+def launcher_info_block(root: Path) -> tuple[dict, int, int, str]:
+    script = root / "anthology_launcher.py"
+    text = read_text_fallback(script)
+    tree = ast.parse(text)
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            if any(isinstance(target, ast.Name) and target.id == "INFO_LINKS" for target in node.targets):
+                if node.end_lineno is None:
+                    raise ReleaseError("Could not locate end of INFO_LINKS block.")
+                lines = text.splitlines(keepends=True)
+                start = sum(len(line) for line in lines[: node.lineno - 1])
+                end = sum(len(line) for line in lines[: node.end_lineno])
+                value = ast.literal_eval(node.value)
+                if not isinstance(value, dict):
+                    raise ReleaseError("INFO_LINKS must be a dict.")
+                for section in INFO_SECTIONS:
+                    value.setdefault(section, {})
+                    if not isinstance(value[section], dict):
+                        raise ReleaseError(f"INFO_LINKS[{section!r}] must be an object.")
+                return value, start, end, text
+    raise ReleaseError("Could not find INFO_LINKS in anthology_launcher.py")
+
+
+def render_launcher_info_links(data: dict) -> str:
+    ordered = {section: data.get(section, {}) for section in ("requirements", "original", "modpack")}
+    return "INFO_LINKS = " + json.dumps(ordered, ensure_ascii=False, indent=4) + "\n"
+
+
+def save_launcher_info(root: Path, data: dict) -> None:
+    _old, start, end, text = launcher_info_block(root)
+    new_text = text[:start] + render_launcher_info_links(data) + text[end:]
+    write_text_preserve_newlines(root / "anthology_launcher.py", new_text)
+
+
+def normalize_info_entry(item: dict, section: str) -> dict:
+    if not isinstance(item, dict):
+        raise ReleaseError(f"Info section {section} must be an object.")
+    title_ru = str(item.get("title_ru") or "").strip()
+    body_ru = str(item.get("body_ru") or "").strip()
+    if not title_ru or not body_ru:
+        raise ReleaseError(f"Info section {section} requires title_ru and body_ru.")
+    title_en = str(item.get("title_en") or title_ru).strip()
+    body_en = str(item.get("body_en") or body_ru).strip()
+    return {
+        "title_ru": title_ru,
+        "body_ru": body_ru,
+        "title_en": title_en,
+        "body_en": body_en,
+    }
+
+
+def launcher_info_entries(root: Path) -> dict:
+    data, _start, _end, _text = launcher_info_block(root)
+    return {section: normalize_info_entry(data.get(section, {}), section) for section in ("requirements", "original", "modpack")}
+
+
+def replace_launcher_info(root: Path, payload: dict) -> None:
+    source = payload.get("info") if isinstance(payload, dict) and isinstance(payload.get("info"), dict) else payload
+    if not isinstance(source, dict):
+        raise ReleaseError("launcher-info payload must be an object.")
+    normalized = {}
+    for section in ("requirements", "original", "modpack"):
+        normalized[section] = normalize_info_entry(source.get(section, {}), section)
+    save_launcher_info(root, normalized)
 
 
 def is_modpack_update_path(path: str) -> bool:
@@ -1047,6 +1114,33 @@ def command_launcher_library_apply(args: argparse.Namespace) -> None:
     data = launcher_library_entries(root)
     total = sum(len(entries) for entries in data.values())
     args.notes = args.notes or f"Apply launcher library ({total} entries)"
+    command_launcher(args)
+
+
+def command_launcher_info_list(args: argparse.Namespace) -> None:
+    root = Path(args.path or LAUNCHER_DIR)
+    data = launcher_info_entries(root)
+    print(json.dumps(
+        {
+            "type": "launcher-info-list",
+            "info": data,
+        },
+        ensure_ascii=False,
+        indent=2,
+    ))
+
+
+def command_launcher_info_apply(args: argparse.Namespace) -> None:
+    root = Path(args.path or LAUNCHER_DIR)
+    if args.info_json:
+        payload = json.loads(args.info_json)
+    elif args.info_file:
+        payload = json.loads(read_text_fallback(Path(args.info_file)))
+    else:
+        raise ReleaseError("launcher-info-apply requires --info-json or --info-file.")
+    require_launcher_build_tools(args, root)
+    replace_launcher_info(root, payload)
+    args.notes = args.notes or "Apply launcher information pages"
     command_launcher(args)
 
 
@@ -1666,6 +1760,18 @@ def build_parser() -> argparse.ArgumentParser:
     launcher_library_apply.add_argument("--skip-build", action="store_true", help="Do not run PyInstaller")
     launcher_library_apply.add_argument("--skip-upload", action="store_true", help="Do not replace latest GitHub release exe")
     launcher_library_apply.set_defaults(func=command_launcher_library_apply)
+
+    launcher_info_list = sub.add_parser("launcher-info-list", help="List launcher information pages")
+    launcher_info_list.add_argument("--path", help="Override project/repo path")
+    launcher_info_list.set_defaults(func=command_launcher_info_list)
+
+    launcher_info_apply = sub.add_parser("launcher-info-apply", help="Replace launcher information pages and publish launcher once")
+    add_common(launcher_info_apply)
+    launcher_info_apply.add_argument("--info-json", help="JSON payload with information pages")
+    launcher_info_apply.add_argument("--info-file", help="Path to JSON payload with information pages")
+    launcher_info_apply.add_argument("--skip-build", action="store_true", help="Do not run PyInstaller")
+    launcher_info_apply.add_argument("--skip-upload", action="store_true", help="Do not replace latest GitHub release exe")
+    launcher_info_apply.set_defaults(func=command_launcher_info_apply)
 
     modpack = sub.add_parser("modpack", help="Publish MO2 modpack update")
     add_common(modpack)

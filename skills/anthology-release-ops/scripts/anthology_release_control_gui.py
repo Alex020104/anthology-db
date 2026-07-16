@@ -81,6 +81,10 @@ UPDATE_RULES_FILE = LAUNCHER_DIR / "assets" / "update_rules.json"
 LIVE_GAME_DIR = configured_local_path("live_game_dir", "ANTHOLOGY_LIVE_GAME_DIR")
 GAME_PAYLOAD_DIR = configured_local_path("game_payload_dir", "ANTHOLOGY_GAME_PAYLOAD_DIR", WORKGIT_DIR / "projects" / "anthology-game-files")
 GAME_PAYLOAD_REPO = os.environ.get("ANTHOLOGY_GAME_PAYLOAD_REPO") or LOCAL_REPOS.get("game_payload_repo") or "Alex020104/anthology-game-files"
+RELEASE_TOOL_REL_PATHS = [
+    "skills/anthology-release-ops/scripts/anthology_release_control_gui.py",
+    "skills/anthology-release-ops/scripts/anthology_release_ops.py",
+]
 DB_SOURCE_DIRS = {
     "configs": LIVE_GAME_DIR / "db" / "configs",
     "mods": LIVE_GAME_DIR / "db" / "mods",
@@ -688,6 +692,7 @@ class ReleaseControl(tk.Tk):
         self._build_content_tab()
         self._build_launcher_tab()
         self._build_library_tab()
+        self._build_info_tab()
         self._build_engine_tab()
         self._build_status_tab()
 
@@ -913,6 +918,67 @@ class ReleaseControl(tk.Tk):
         self.library_en_summary = self._form_text(form, "EN short summary (можно оставить пустым)", height=3)
         self.library_en_body = self._form_text(form, "EN full description (можно оставить пустым)", height=5)
         self.refresh_library_draft(silent=True)
+
+    def _build_info_tab(self) -> None:
+        tab = ttk.Frame(self.notebook, padding=14)
+        self.notebook.add(tab, text="Информация")
+
+        box = ttk.Labelframe(tab, text="Информация в лаунчере", padding=14)
+        box.pack(fill="both", expand=True)
+        ttk.Label(
+            box,
+            text="Редактирует три информационных страницы лаунчера: системные требования, оригинал и модпак. Файлы не загружаются — меняется только текст в лаунчере.",
+            style="CardMuted.TLabel",
+        ).pack(anchor="w", pady=(0, 12))
+
+        row = ttk.Frame(box)
+        row.pack(fill="x", pady=(0, 10))
+        ttk.Label(row, text="Раздел:", style="CardMuted.TLabel").pack(side="left", padx=(0, 8))
+        self.info_section = tk.StringVar(value="requirements | Системные требования")
+        section_box = ttk.Combobox(
+            row,
+            textvariable=self.info_section,
+            values=[
+                "requirements | Системные требования",
+                "original | Информация об Оригинале",
+                "modpack | Информация о Модпаке",
+            ],
+            state="readonly",
+            width=42,
+        )
+        section_box.pack(side="left", padx=(0, 12))
+        section_box.bind("<<ComboboxSelected>>", self.load_info_section_to_form)
+        ttk.Button(row, text="Загрузить текущую", command=self.refresh_info_draft).pack(side="left", padx=(0, 8))
+        ttk.Button(row, text="Очистить форму", command=self.clear_info_form).pack(side="left", padx=(0, 8))
+        ttk.Button(row, text="Сохранить раздел в черновик", command=self.save_info_section_to_draft).pack(side="left", padx=(0, 8))
+        ttk.Button(row, text="Опубликовать информацию", command=self.publish_info_draft, style="Accent.TButton").pack(side="right")
+
+        editor = ttk.PanedWindow(box, orient="horizontal")
+        editor.pack(fill="both", expand=True)
+
+        list_frame = ttk.Frame(editor)
+        editor.add(list_frame, weight=1)
+        form = ttk.Frame(editor, padding=(14, 0, 0, 0))
+        editor.add(form, weight=2)
+
+        self.info_items = {"requirements": {}, "original": {}, "modpack": {}}
+        self.info_status = tk.StringVar(value="Черновик информации: загрузи текущую версию или заполни разделы вручную.")
+        ttk.Label(list_frame, textvariable=self.info_status, style="Muted.TLabel").pack(anchor="w", pady=(0, 6))
+        self.info_tree = ttk.Treeview(list_frame, columns=("section", "title"), show="headings", height=10)
+        self.info_tree.heading("section", text="Раздел")
+        self.info_tree.heading("title", text="Заголовок")
+        self.info_tree.column("section", width=150, stretch=False)
+        self.info_tree.column("title", width=300)
+        self.info_tree.pack(fill="both", expand=True)
+        self.info_tree.bind("<<TreeviewSelect>>", self.on_info_select)
+
+        self.info_ru_title = tk.StringVar()
+        self.info_en_title = tk.StringVar()
+        self._form_entry(form, "RU заголовок", self.info_ru_title)
+        self.info_ru_body = self._form_text(form, "RU текст страницы", height=10)
+        self._form_entry(form, "EN title (можно оставить пустым)", self.info_en_title)
+        self.info_en_body = self._form_text(form, "EN page text (можно оставить пустым)", height=10)
+        self.refresh_info_draft(silent=True)
 
     def _build_engine_tab(self) -> None:
         tab = ttk.Frame(self.notebook, padding=14)
@@ -1327,11 +1393,27 @@ class ReleaseControl(tk.Tk):
 
     def sync_repo_commands(self, label: str, root: Path) -> list[tuple[str, list[str], Path]]:
         branch = self.current_git_branch(root)
-        commands = [(f"{label}: fetch", ["git", "fetch", "origin", branch, "--prune"], root)]
+        commands: list[tuple[str, list[str], Path]] = []
+        try:
+            is_workgit = root.resolve() == WORKGIT_DIR.resolve()
+        except OSError:
+            is_workgit = False
+        if is_workgit:
+            commands.append((
+                f"{label}: cleanup stale rebase",
+                ["powershell", "-NoProfile", "-Command", "git rebase --abort 2>$null; exit 0"],
+                root,
+            ))
+        commands.append((f"{label}: fetch", ["git", "fetch", "origin", branch, "--prune"], root))
+        pull_command = ["git", "pull", "--rebase", "--autostash", "origin", branch]
+        if is_workgit:
+            pull_command = ["git", "pull", "--rebase", "--autostash", "-X", "ours", "origin", branch]
         commands.extend([
-            (f"{label}: pull/rebase", ["git", "pull", "--rebase", "--autostash", "origin", branch], root),
-            (f"{label}: status", ["git", "status", "--short", "--branch"], root),
+            (f"{label}: pull/rebase", pull_command, root),
         ])
+        if is_workgit:
+            commands.append((f"{label}: keep release tool from GitHub", ["git", "checkout", f"origin/{branch}", "--", *RELEASE_TOOL_REL_PATHS], root))
+        commands.append((f"{label}: status", ["git", "status", "--short", "--branch"], root))
         return commands
     def sync_repo(self, label: str, root: Path) -> None:
         if not self.is_git_repo_path(root):
@@ -2252,6 +2334,152 @@ class ReleaseControl(tk.Tk):
             except OSError:
                 pass
         self.refresh_library_draft(silent=True)
+
+    def info_section_key(self) -> str:
+        value = self.info_section.get().split("|", 1)[0].strip()
+        return value if value in {"requirements", "original", "modpack"} else "requirements"
+
+    def info_section_label(self, section: str) -> str:
+        return {
+            "requirements": "Системные требования",
+            "original": "Информация об Оригинале",
+            "modpack": "Информация о Модпаке",
+        }.get(section, section)
+
+    def clear_info_form(self) -> None:
+        self.info_ru_title.set("")
+        self.info_en_title.set("")
+        self.info_ru_body.delete("1.0", "end")
+        self.info_en_body.delete("1.0", "end")
+
+    def render_info_tree(self, select_section: str | None = None) -> None:
+        for iid in self.info_tree.get_children():
+            self.info_tree.delete(iid)
+        for section in ("requirements", "original", "modpack"):
+            item = self.info_items.get(section) or {}
+            title = item.get("title_ru") or item.get("title_en") or "—"
+            self.info_tree.insert("", "end", iid=section, values=(self.info_section_label(section), title))
+        if select_section and self.info_tree.exists(select_section):
+            self.info_tree.selection_set(select_section)
+            self.info_tree.focus(select_section)
+
+    def info_form_item(self) -> dict | None:
+        title_ru = self.info_ru_title.get().strip()
+        body_ru = self.info_ru_body.get("1.0", "end").strip()
+        title_en = self.info_en_title.get().strip()
+        body_en = self.info_en_body.get("1.0", "end").strip()
+        if not title_ru or not body_ru:
+            messagebox.showwarning("Информация", "Заполни RU заголовок и RU текст страницы.")
+            return None
+        return {
+            "title_ru": title_ru,
+            "body_ru": body_ru,
+            "title_en": title_en or title_ru,
+            "body_en": body_en or body_ru,
+        }
+
+    def load_info_item_to_form(self, section: str) -> None:
+        item = self.info_items.get(section) or {}
+        self.clear_info_form()
+        self.info_ru_title.set(str(item.get("title_ru", "")))
+        self.info_ru_body.insert("1.0", str(item.get("body_ru", "")))
+        self.info_en_title.set(str(item.get("title_en", "")))
+        self.info_en_body.insert("1.0", str(item.get("body_en", "")))
+
+    def load_info_section_to_form(self, _event=None) -> None:
+        self.load_info_item_to_form(self.info_section_key())
+
+    def on_info_select(self, _event=None) -> None:
+        selection = self.info_tree.selection()
+        if not selection:
+            return
+        section = selection[0]
+        labels = {
+            "requirements": "requirements | Системные требования",
+            "original": "original | Информация об Оригинале",
+            "modpack": "modpack | Информация о Модпаке",
+        }
+        if section in labels:
+            self.info_section.set(labels[section])
+            self.load_info_item_to_form(section)
+
+    def save_info_section_to_draft(self) -> None:
+        item = self.info_form_item()
+        if not item:
+            return
+        section = self.info_section_key()
+        self.info_items[section] = item
+        self.render_info_tree(select_section=section)
+        self.info_status.set(f"Раздел «{self.info_section_label(section)}» сохранён в черновик. Публикация ещё не выполнена.")
+
+    def refresh_info_draft(self, silent: bool = False) -> None:
+        try:
+            output = self.capture(
+                [sys.executable, str(HELPER), "launcher-info-list"],
+                WORKGIT_DIR,
+            )
+            payload = json.loads(output)
+            info = payload.get("info", payload)
+            if isinstance(info, dict):
+                self.info_items = {
+                    "requirements": info.get("requirements") or {},
+                    "original": info.get("original") or {},
+                    "modpack": info.get("modpack") or {},
+                }
+            self.render_info_tree(select_section=self.info_section_key())
+            self.load_info_section_to_form()
+            self.info_status.set("Текущая информация загружена из лаунчера.")
+        except Exception as exc:
+            if not silent:
+                messagebox.showerror("Информация", f"Не удалось прочитать информацию:\n{exc}")
+
+    def write_info_payload_file(self) -> Path:
+        handle = tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8", suffix=".json", prefix="anthology_launcher_info_")
+        with handle:
+            json.dump({"info": self.info_items}, handle, ensure_ascii=False)
+        return Path(handle.name)
+
+    def publish_info_draft(self) -> None:
+        item = self.info_form_item()
+        if item:
+            self.info_items[self.info_section_key()] = item
+            self.render_info_tree(select_section=self.info_section_key())
+        if any(not (self.info_items.get(section) or {}).get("body_ru") for section in ("requirements", "original", "modpack")):
+            messagebox.showwarning("Информация", "Заполни все три раздела перед публикацией.")
+            return
+        version = self.ask_version("лаунчера")
+        if not version:
+            return
+        notes = self.ask_notes("Заметки лаунчера", "Обновлена информация лаунчера")
+        if not notes:
+            return
+        if not self.confirm_publish("информацию лаунчера", version, LAUNCHER_DIR):
+            return
+        payload_file = self.write_info_payload_file()
+        self.run_command(
+            [
+                sys.executable,
+                str(HELPER),
+                "launcher-info-apply",
+                "--version",
+                version,
+                "--notes",
+                notes,
+                "--info-file",
+                str(payload_file),
+            ],
+            WORKGIT_DIR,
+            on_success=lambda _out, path=payload_file: self.publish_info_done(path),
+            title=f"Publish launcher info {version}",
+        )
+
+    def publish_info_done(self, payload_file: Path | None = None) -> None:
+        if payload_file:
+            try:
+                payload_file.unlink(missing_ok=True)
+            except OSError:
+                pass
+        self.refresh_info_draft(silent=True)
 
     def publish_library_entry(self) -> None:
         category = self.library_category_key()
